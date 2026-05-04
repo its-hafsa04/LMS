@@ -1,122 +1,109 @@
 import { styles } from "@/app/styles/style";
-import React, { FC } from "react";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import toast from "react-hot-toast";
-
 type Props = {
   benefits: { title: string }[];
   setBenefits: (benefits: { title: string }[]) => void;
   prerequisites: { title: string }[];
-  setPrerequisites: (prerequisites: { title: string }[]) => void;
+  setPrerequisites: (prequisites: { title: string }[]) => void;
   active: number;
-  setActive: (active: number) => void;
+  setActive: (active: any) => void;
 };
-
-const CourseData: FC<Props> = ({
+const CourseData = ({
   benefits,
   setBenefits,
   prerequisites,
   setPrerequisites,
   active,
   setActive,
-}) => {
-  const handleBenefitChange = (index: number, value: string) => {
-    const updatedBenefits = benefits.map((benefit, i) =>
-      i === index ? { ...benefit, title: value } : benefit
-    );
+}: Props) => {
+  const handleBenefitChange = (index: number, value: any) => {
+    const updatedBenefits = [...benefits];
+    updatedBenefits[index].title = value;
     setBenefits(updatedBenefits);
   };
-
-  const handlePrerequisiteChange = (index: number, value: string) => {
-    const updatedPrerequisites = prerequisites.map((item, i) =>
-      i === index ? { ...item, title: value } : item
-    );
-    setPrerequisites(updatedPrerequisites);
+  const handlePrerequisiteChange = (index: number, value: any) => {
+    const updatedPrequisites = [...prerequisites];
+    updatedPrequisites[index].title = value;
+    setPrerequisites(updatedPrequisites);
   };
 
-  const handleAddBenefits = () => {
+  const handleAddBenefit = () => {
     setBenefits([...benefits, { title: "" }]);
   };
-
-  const handleAddPrerequisites = () => {
+  const handleAddPrerequisite = () => {
     setPrerequisites([...prerequisites, { title: "" }]);
   };
 
   const prevButton = () => {
     setActive(active - 1);
   };
-
-  const handleOptions = () => {
+  const handleOption = () => {
     if (
       benefits[benefits.length - 1]?.title !== "" &&
       prerequisites[prerequisites.length - 1]?.title !== ""
     ) {
       setActive(active + 1);
     } else {
-      toast.error("Please fill all the fields.");
+      toast.error("Please fill all the fields to continue!");
     }
   };
   return (
-    <div className="w-[80%] m-auto mt-24 block dark:text-white text-black">
-      <div>
+    <div className="w-[80%] m-auto mt-24 block">
+      <div className="">
         <label className={`${styles.label} text-[20px]`}>
-          What are the benefits for students in this course?
+          What are the benefits students will get from this course?
         </label>
         <br />
-        {benefits.map((benefits: any, index: number) => (
+        {benefits.map((benefit: any, index: number) => (
           <input
             type="text"
             key={index}
-            name="Benefits"
-            placeholder="You will be able to build a fullstack LMS application.."
+            name="Benefit"
+            placeholder="You will be able to handle state management..."
             required
             className={`${styles.input} my-2`}
-            value={benefits.title || ""}
+            value={benefit.title}
             onChange={(e) => handleBenefitChange(index, e.target.value)}
           />
         ))}
         <AddCircleIcon
-          style={{
-            margin: "10px 0",
-            cursor: "pointer",
-            width: "30px",
-            color: "black",
-          }}
-          onClick={handleAddBenefits}
+          style={{ margin: "10px 0px", cursor: "pointer", width: "30px" }}
+          onClick={handleAddBenefit}
         />
       </div>
-      <div>
+      <div className="">
         <label className={`${styles.label} text-[20px]`}>
-          What are the prerequisites of this course?
+          What are the prerequisites students will require to take this course?
         </label>
         <br />
-        {prerequisites.map((prerequisites: any, index: number) => (
+        {prerequisites.map((prerequisite: any, index: number) => (
           <input
             type="text"
             key={index}
-            name="prerequisites"
-            placeholder="You need basic knowledge of MERN."
+            name="Prerequisite"
+            placeholder="Basic knowledge of React..."
             required
             className={`${styles.input} my-2`}
-            value={prerequisites.title || ""}
+            value={prerequisite.title}
             onChange={(e) => handlePrerequisiteChange(index, e.target.value)}
           />
         ))}
         <AddCircleIcon
-          style={{ margin: "10px 0", cursor: "pointer", width: "30px" }}
-          onClick={handleAddPrerequisites}
+          style={{ margin: "10px 0px", cursor: "pointer", width: "30px" }}
+          onClick={handleAddPrerequisite}
         />
       </div>
       <div className="w-full flex items-center justify-between">
         <div
-          className="w-full 800px:w-[180px] flex items-center justify-center h-[40px] bg-[#37a39a] text-center text-[#fff] rounded mt-8 cursor-pointer"
           onClick={() => prevButton()}
+          className="w-full 800px:w-[180px] flex items-center justify-center h-[40px] cursor-pointer bg-[#37a39a] text-center text-[#fff] rounded mt-8"
         >
           Prev
         </div>
         <div
-          className="w-full 800px:w-[180px] flex items-center justify-center h-[40px] bg-[#37a39a] text-center text-[#fff] rounded mt-8 cursor-pointer"
-          onClick={() => handleOptions()}
+          onClick={() => handleOption()}
+          className="w-full 800px:w-[180px] flex items-center justify-center h-[40px] cursor-pointer bg-[#37a39a] text-center text-[#fff] rounded mt-8"
         >
           Next
         </div>

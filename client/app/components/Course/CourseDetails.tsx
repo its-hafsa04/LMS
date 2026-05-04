@@ -1,302 +1,340 @@
-import { styles } from "@/app/styles/style";
+import CoursePlayer from "@/app/utils/CoursePlayer";
 import Ratings from "@/app/utils/Ratings";
-import { useLoadUserQuery } from "@/redux/features/api/apiSlice";
-import { Elements } from "@stripe/react-stripe-js";
-import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { IoCheckmarkDoneOutline, IoCloseOutline } from "react-icons/io5";
-import { VscVerifiedFilled } from "react-icons/vsc";
-import { format } from "timeago.js";
-import CheckOutForm from "../Payment/CheckOutForm";
 import CourseContentList from "./CourseContentList";
-import CoursePlayer from "@/utils/CoursePlayer";
-import React from "react";
+import { format } from "timeago.js";
+import { Elements } from "@stripe/react-stripe-js";
+import CheckoutForm from "../Payment/CheckoutForm";
+import { useLoadUserQuery } from "@/redux/features/api/apiSlice";
+import defaultAvatar from "../../../public/assets/avatar.jpg";
+import Image from "next/image";
+import Loader from "../Common/Loader/Loader";
+import { useSelector } from "react-redux";
 
 type Props = {
   data: any;
   clientSecret: string;
   stripePromise: any;
-  setRoute: any;
   setOpen: any;
+  setRoute: any;
 };
-
-const CourseDetails = (props) => {
-  // console.log("🚀 ~ CourseDetails ~ clientSecret:", clientSecret);
-  // console.log("🚀 ~ CourseDetails ~ stripePromise:", stripePromise);
-  const { data: userData } = useLoadUserQuery(undefined, {});
-  const [user, setUser] = useState();
+const CourseDetails = ({
+  data,
+  clientSecret,
+  stripePromise,
+  setOpen: authModel,
+  setRoute,
+}: Props) => {
+  const { user: authUser } = useSelector((state: any) => state.auth);
+  const {
+    data: userData,
+    isLoading,
+    refetch: userRefetch,
+  } = useLoadUserQuery(undefined, {});
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<any>();
 
   useEffect(() => {
     setUser(userData?.user);
   }, [userData]);
 
+  useEffect(() => {
+    if (authUser) {
+      userRefetch();
+    }
+  }, [authUser, userRefetch]);
+
   const discountPercentage =
-    ((props.data.estimatedPrice - props.data.price) / props.data.estimatedPrice) * 100;
+    ((data.estimatedPrice - data.price) / data?.estimatedPrice) * 100;
 
   const discountPercentagePrice = discountPercentage.toFixed(0);
-  const isPurchased =
-    user?.course?.some((item: any) => item.courseId === props.data._id) || false;
 
-  const handleOrder = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const isPurchased =
+    user && user?.courses?.find((item: any) => item._id === data._id);
+
+  const handleOrder = (e: any) => {
     if (user) {
       setOpen(true);
     } else {
       setRoute("Login");
-      openAuthModal(true);
+      authModel(true);
     }
   };
 
-  // Normalize possible undefined arrays so .map never runs on undefined
-  const course = props.course ?? {};
-  const curriculum = Array.isArray(course.curriculum) ? course.curriculum : [];
-  const sections = Array.isArray(course.sections) ? course.sections : [];
-  const reviews = Array.isArray(course.reviews) ? course.reviews : [];
-  const instructors = Array.isArray(course.instructors) ? course.instructors : [];
-
-  // console.log("🚀 ~ isPurchased:", isPurchased);
   return (
-    <div>
-      <div className="w-[90%] 800px:w-[90%] m-auto py-5">
-        <div className="w-full flex flex-col-reverse 800px:flex-row">
-          <div className="w-full 800px:w-[65%] 800px:pr-5">
-            <h1 className="text-[25px] font-Poppins font-[600] text-black dark:text-white">
-              {props.data.name}
-            </h1>
-            <div className="flex items-center justify-between pt-3">
-              <div className="flex items-center">
-                <Ratings rating={props.data.ratings} />
-                <h5 className="text-black dark:text-white">
-                  {props.data.reviews?.length} Reviews
-                </h5>
-              </div>
-              <h5 className="text-black dark:text-white">
-                {props.data.purchased} Students
-              </h5>
-            </div>
-
-            <br />
-
-            <h1 className="text-[25px] font-Poppins font-[600] text-black dark:text-white">
-              What you will learn from this course?
-            </h1>
-            <div>
-              {props.data.benefits?.map((item: any, index: number) => (
-                <div
-                  className="w-full flex 800px:items-center py-2"
-                  key={index}
-                >
-                  <div className="w-[15px] mr-1">
-                    <IoCheckmarkDoneOutline
-                      size={20}
-                      className="text-black dark:text-white"
-                    />
-                  </div>
-                  <p className="pl-2 text-black dark:text-white">
-                    {item.title}
-                  </p>
-                </div>
-              ))}
-              <br />
-              <br />
-            </div>
-
-            <h1 className="text-[25px] font-Poppins font-[600] text-black dark:text-white">
-              What are the prerequisites for starting this course?
-            </h1>
-            {props.data.prerequisites?.map((item: any, index: number) => (
-              <div className="w-full flex 800px:items-center py-2" key={index}>
-                <div className="w-[15px] mr-1">
-                  <IoCheckmarkDoneOutline
-                    size={20}
-                    className="text-black dark:text-white"
-                  />
-                </div>
-                <p className="pl-2 text-black dark:text-white">{item.title}</p>
-              </div>
-            ))}
-            <br />
-            <br />
-
-            <div>
-              <h1 className="text-[25px] font-Poppins font-[600] text-black dark:text-white">
-                Course Overview
-              </h1>
-              <CourseContentList data={props.data?.courseData} isDemo={true} />
-            </div>
-            <br />
-            <br />
-
-            <div className="w-full">
-              <h1 className="text-[25px] font-Poppins font-[600] text-black dark:text-white">
-                Course Details
-              </h1>
-              <p className="text-[18px] mt-[20px] whitespace-pre-line w-full overflow-hidden text-black dark:text-white">
-                {props.data.description}
-              </p>
-            </div>
-
-            <br />
-            <br />
-            <div className="w-full">
-              <div className="800px:flex items-center">
-                <Ratings rating={props.data?.ratings} />
-                <div className="mb-2 800px:mb-[unset]" />
-                <h5 className="text-[25px] font-Poppins text-black dark:text-white">
-                  {Number.isInteger(props.data?.ratings)
-                    ? props.data?.ratings.toFixed(1)
-                    : props.data?.ratings.toFixed(2)}
-                  Course Rating • {props.data?.reviews?.length} Reviews
-                </h5>
-              </div>
-
-              <br />
-
-              {(props.data?.reviews && [...props.data.reviews].reverse()).map(
-                (item: any, index: number) => (
-                  <div className="w-full pb-4" key={index}>
-                    <div className="flex">
-                      <div className="w-[50px] h-[50px]">
-                        <Image
-                          src={
-                            item.user.avatar
-                              ? item.user.avatar.url
-                              : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                          }
-                          width={50}
-                          height={50}
-                          alt=""
-                          className="w-[50px] h-[50px] rounded-full object-cover"
-                        />
+    <>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <div className="">
+          <div className="bg-gray-50 dark:bg-gray-900">
+            <div className="w-[90%] 800px:w-[90%] m-auto py-8">
+              <div className="w-full flex flex-col-reverse 800px:flex-row gap-8">
+                {/* Main Content */}
+                <div className="w-full 800px:w-[65%]">
+                  {/* Course Title */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-6">
+                    <h1 className="text-[28px] 800px:text-[32px] font-Poppins font-[700] text-gray-900 dark:text-white mb-4">
+                      {data.name}
+                    </h1>
+                    <div className="flex flex-col 800px:flex-row 800px:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <Ratings rating={data.ratings} />
+                        <span className="text-[16px] text-gray-600 dark:text-gray-300">
+                          ({data?.reviews?.length} Reviews)
+                        </span>
                       </div>
-                      <div className="hidden 800px:block pl-2">
-                        <div className="flex items-center">
-                          <h5 className="text-[18px] pr-2 text-black dark:text-white">
-                            {item.user.name}
-                          </h5>
-                          <Ratings rating={item.rating} />
-                        </div>
-                        <p className="text-black dark:text-white">
-                          {item.comment}
-                        </p>
-                        <small className="text-[#000000d1] dark:text-[#ffffff83]">
-                          {format(item.createdAt)} •
-                        </small>
-                      </div>
-                      <div className="pl-2 flex 800px:hidden items-center">
-                        <h5 className="text-[18px] pr-2 text-black dark:text-white">
-                          {item.user.name}
-                        </h5>
-                        <Ratings rating={item.rating} />
+                      <div className="text-[16px] text-blue-600 dark:text-blue-400 font-medium">
+                        {data.purchased} Students Enrolled
                       </div>
                     </div>
-                    {item.commentReplies.map((i: any, index: number) => (
-                      <div className="w-full flex 800px:ml-16 my-5" key={index}>
-                        <div className="w-[50px] h-[50px]">
-                          <Image
-                            src={
-                              i.user.avatar
-                                ? i.user.avatar.url
-                                : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                            }
-                            width={50}
-                            height={50}
-                            alt=""
-                            className="w-[50px] h-[50px] rounded-full object-cover"
+                  </div>
+
+                  {/* What you will learn */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-6">
+                    <h2 className="text-[24px] font-Poppins font-[600] text-gray-900 dark:text-white mb-6">
+                      What you will learn from this course?
+                    </h2>
+                    <div className="grid grid-cols-1 800px:grid-cols-2 gap-4">
+                      {data?.benefits.map((item: any, index: number) => (
+                        <div
+                          className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg"
+                          key={index}
+                        >
+                          <IoCheckmarkDoneOutline
+                            size={20}
+                            className="text-green-600 dark:text-green-400 mt-1 flex-shrink-0"
                           />
+                          <p className="text-[16px] text-gray-700 dark:text-gray-300">
+                            {item.title}
+                          </p>
                         </div>
-                        <div className="pl-2">
-                          <div className="flex items-center">
-                            <h5 className="text-[20px]">{i.user.name}</h5>
-                            <VscVerifiedFilled className="text-[#0095F6] ml-2 text-[20px]" />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Prerequisites */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-6">
+                    <h2 className="text-[24px] font-Poppins font-[600] text-gray-900 dark:text-white mb-6">
+                      What are the pre-requisites before starting this course?
+                    </h2>
+                    <div className="space-y-3">
+                      {data?.prerequisites?.map((item: any, index: number) => (
+                        <div
+                          className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
+                          key={index}
+                        >
+                          <IoCheckmarkDoneOutline
+                            size={20}
+                            className="text-blue-600 dark:text-blue-400 mt-1 flex-shrink-0"
+                          />
+                          <p className="text-[16px] text-gray-700 dark:text-gray-300">
+                            {item.title}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Course Overview */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-6">
+                    <h2 className="text-[24px] font-Poppins font-[600] text-gray-900 dark:text-white mb-6">
+                      Course Overview
+                    </h2>
+                    <CourseContentList data={data?.courseData} isDemo={true} />
+                  </div>
+
+                  {/* Course Description */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-6">
+                    <h2 className="text-[24px] font-Poppins font-[600] text-gray-900 dark:text-white mb-6">
+                      Course Details
+                    </h2>
+                    <div className="prose prose-lg dark:prose-invert max-w-none">
+                      <p className="text-[16px] leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                        {data.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Reviews Section */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                    <div className="flex flex-col 800px:flex-row 800px:items-center gap-4 mb-8">
+                      <Ratings rating={data?.ratings} />
+                      <h2 className="text-[24px] font-Poppins font-[600] text-gray-900 dark:text-white">
+                        {Number.isInteger(data?.ratings)
+                          ? data?.ratings.toFixed(1)
+                          : data?.ratings.toFixed(2)}{" "}
+                        Course Rating • {data?.reviews?.length} Reviews
+                      </h2>
+                    </div>
+
+                    <div className="space-y-6">
+                      {(data.reviews && [...data.reviews].reverse()).map(
+                        (item: any, index: number) => (
+                          <div
+                            key={index}
+                            className="border-b border-gray-200 dark:border-gray-700 pb-6 last:border-b-0"
+                          >
+                            <div className="flex gap-4">
+                              <div className="">
+                                <Image
+                                  alt="user-img"
+                                  src={item?.user?.avatar?.url || defaultAvatar}
+                                  width={50}
+                                  height={50}
+                                  className="h-[50px] w-[50px] object-contain rounded-full"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex flex-col 800px:flex-row 800px:items-center gap-2 800px:gap-4 mb-3">
+                                  <h3 className="text-[18px] font-Poppins font-[600] text-gray-900 dark:text-white">
+                                    {item.user.name}
+                                  </h3>
+                                  <Ratings rating={item.rating} />
+                                  <span className="text-[14px] text-gray-500 dark:text-gray-400">
+                                    {format(item.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="text-[16px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                                  {item.comment}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                          <p>{i.comment}</p>
-                          <small className="text-[#ffffff83]">
-                            {format(i.createdAt)} •
-                          </small>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="w-full 800px:w-[35%]">
+                  <div className="sticky top-[100px]">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+                      <CoursePlayer
+                        videoUrl={data?.demoUrl}
+                        title={data?.title}
+                      />
+
+                      <div className="p-6">
+                        {/* Pricing */}
+                        <div className="flex items-center gap-4 mb-6">
+                          <span className="text-[32px] font-Poppins font-[700] text-blue-600 dark:text-blue-400">
+                            {data?.price === 0 ? "Free" : `$${data.price}`}
+                          </span>
+                          {data.estimatedPrice > data.price && (
+                            <>
+                              <span className="text-[20px] text-gray-500 line-through">
+                                ${data.estimatedPrice}
+                              </span>
+                              <span className="px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300 rounded-full text-[14px] font-medium">
+                                {discountPercentagePrice}% OFF
+                              </span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Purchase Button */}
+                        <div className="mb-6">
+                          {isPurchased ? (
+                            <Link
+                              href={`/course-access/${data._id}`}
+                              className="w-full block text-center bg-green-600 hover:bg-green-700 text-white font-Poppins font-[600] py-4 px-6 rounded-lg transition-colors text-[16px]"
+                            >
+                              Access Course
+                            </Link>
+                          ) : (
+                            <button
+                              className="w-full cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-Poppins font-[600] py-4 px-6 rounded-lg transition-colors text-[16px]"
+                              onClick={handleOrder}
+                            >
+                              Purchase for ${data.price}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Course Features */}
+                        <div className="space-y-3 text-[15px]">
+                          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                            <IoCheckmarkDoneOutline
+                              className="text-green-600 dark:text-green-400"
+                              size={18}
+                            />
+                            <span>Source code included</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                            <IoCheckmarkDoneOutline
+                              className="text-green-600 dark:text-green-400"
+                              size={18}
+                            />
+                            <span>Full lifetime access</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                            <IoCheckmarkDoneOutline
+                              className="text-green-600 dark:text-green-400"
+                              size={18}
+                            />
+                            <span>Certificate of completion</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300">
+                            <IoCheckmarkDoneOutline
+                              className="text-green-600 dark:text-green-400"
+                              size={18}
+                            />
+                            <span>Premium support</span>
+                          </div>
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                )
-              )}
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="w-full 800px:w-[35%] relative">
-            <div className="sticky top-[100px] left-0 z-50 w-full">
-              <CoursePlayer videoUrl={props.data?.demoUrl} title={props.data?.title} />
-              <div className="flex items-center">
-                <h1 className="pt-5 text-[25px] text-black dark:text-white">
-                  {props.data.price === 0 ? "Free" : props.data.price + "$"}
-                </h1>
-                <h5 className="pl-3 text-[20px] mt-2 line-through opacity-80 text-black dark:text-white">
-                  {props.data.estimatedPrice}$
-                </h5>
-
-                <h4 className="pl-5 pt-4 text-[22px] text-black dark:text-white">
-                  {discountPercentagePrice}% Off
-                </h4>
-              </div>
-              <div className="flex items-center">
-                {isPurchased ? (
-                  <Link
-                    className={`${styles.button} !w-[180px] my-3 font-Poppins cursor-pointer !bg-[crimson]`}
-                    href={`/course-access/${props.data._id}`}
-                  >
-                    Enter to Course
-                  </Link>
-                ) : (
-                  <div
-                    className={`${styles.button} !w-[180px] my-3 font-Poppins cursor-pointer !bg-[crimson]`}
-                    onClick={handleOrder}
-                  >
-                    Buy Now {props.data.price}$
+          <>
+            {open && (
+              <div className="w-full h-screen bg-black/50 fixed top-0 left-0 z-[9999] flex items-center justify-center">
+                <div className="w-[90%] max-w-[500px] h-[85vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
+                  <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 className="text-xl font-Poppins font-[600] text-gray-900 dark:text-white">
+                      Complete Your Purchase
+                    </h3>
+                    <IoCloseOutline
+                      size={24}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer"
+                      onClick={() => setOpen(false)}
+                    />
                   </div>
-                )}
+                  <div className="w-full">
+                    {stripePromise && clientSecret ? (
+                      <Elements
+                        stripe={stripePromise}
+                        options={{ clientSecret }}
+                      >
+                        <CheckoutForm
+                          setOpen={setOpen}
+                          data={data}
+                          user={user}
+                        />
+                      </Elements>
+                    ) : (
+                      <div className="p-6 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                        <p className="mt-2 text-gray-600 dark:text-gray-400">
+                          Loading payment form...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-              <br />
-
-              <p className="pb-1 text-black dark:text-white">
-                • Source code included
-              </p>
-              <p className="pb-1 text-black dark:text-white">
-                • Full lifetime access
-              </p>
-              <p className="pb-1 text-black dark:text-white">
-                • Certificate of completion
-              </p>
-              <p className="pb-3 800px:pb-1 text-black dark:text-white">
-                • Premium Support
-              </p>
-            </div>
-          </div>
+            )}
+          </>
         </div>
-      </div>
-      <>
-        {open && (
-          <div className="w-full h-screen bg-[#00000036] fixed top-0 left-0 z-50 flex items-center justify-center">
-            <div className="w-[500px] min-h-[500px] bg-white rounded-xl shadow p-3">
-              <div className="w-full flex justify-end">
-                <IoCloseOutline
-                  size={40}
-                  className="text-black cursor-pointer"
-                  onClick={() => setOpen(false)}
-                />
-              </div>
-              <div className="w-full">
-                {stripePromise && clientSecret && (
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
-                    <CheckOutForm setOpen={setOpen} data={props.data} user={user} />
-                  </Elements>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </>
-    </div>
+      )}
+    </>
   );
 };
 

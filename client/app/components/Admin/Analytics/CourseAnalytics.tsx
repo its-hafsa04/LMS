@@ -1,55 +1,46 @@
-import { styles } from "@/app/styles/style";
 import {
-  Bar,
   BarChart,
-  Label,
-  LabelList,
+  Bar,
   ResponsiveContainer,
   XAxis,
+  Label,
   YAxis,
+  LabelList,
 } from "recharts";
-import Loader from "../../Loader/Loader";
-import { useGetCourseAnalyticsQuery } from "@/redux/features/analytics/analyticsApi";
-type Props = object;
+import Loader from "../../Common/Loader/Loader";
+import { styles } from "@/app/styles/style";
+import { useGetCourseAnalyticsQuery } from "@/redux/features/analytics/analyticApi";
 
 const CourseAnalytics = () => {
   const { data, isLoading } = useGetCourseAnalyticsQuery({});
 
   //   const analyticsData = [
-  //     { name: "June 2023", uv: 3 },
-  //     { name: "July 2023", uv: 2 },
-  //     { name: "August 2023", uv: 5 },
-  //     { name: "September 2023", uv: 7 },
-  //     { name: "October 2023", uv: 2 },
-  //     { name: "November 2023", uv: 5 },
-  //     { name: "December 2023", uv: 7 },
+  //     { name: "Jun 2025", uv: 3 },
+  //     { name: "July 2025", uv: 2 },
+  //     { name: "August 2025", uv: 2 },
+  //     { name: "Sep 2025", uv: 2 },
+  //     { name: "October 2025", uv: 2 },
+  //     { name: "Nov 2025", uv: 2 },
+  //     { name: "December 2025", uv: 7 },
   //   ];
 
   const analyticsData: any = [];
-
-  if (data && data.courses && data.courses.last12Months) {
+  data &&
     data.courses.last12Months.forEach((item: any) => {
-      analyticsData.push({
-        name: item.month,
-        uv: item.count,
-      });
+      analyticsData.push({ name: item.month, uv: item.count });
     });
-  }
-
-  const minValue = 0;
-
   return (
     <>
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="h-screen">
+        <div className="h-screen ">
           <div className="mt-[50px]">
-            <h1 className={`${styles.title} px-5 !text-start`}>
-              Courses Analytics
+            <h1 className={`${styles.title} px-5 !items-start`}>
+              Course Analytics
             </h1>
             <p className={`${styles.label} px-5`}>
-              Last 12 Months Analytics Data
+              Last 12 months analytics data{" "}
             </p>
           </div>
 
@@ -59,7 +50,7 @@ const CourseAnalytics = () => {
                 <XAxis dataKey="name">
                   <Label offset={0} position="insideBottom" />
                 </XAxis>
-                <YAxis domain={[minValue, "auto"]} />
+                <YAxis domain={[0, "auto"]} />
                 <Bar dataKey="uv" fill="#3faf82">
                   <LabelList dataKey="uv" position="top" />
                 </Bar>

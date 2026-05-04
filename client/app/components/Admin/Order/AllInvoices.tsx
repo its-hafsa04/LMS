@@ -1,62 +1,46 @@
-import { useGetAllCoursesQuery } from "@/redux/features/courses/coursesApi";
-import { useGetAllUsersQuery } from "@/redux/features/user/userApi";
-import { Box } from "@mui/material";
+import React, { useEffect, useState } from "react";
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
+import { Box, Button } from "@mui/material";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
-import { AiOutlineMail } from "react-icons/ai";
+import { useGetAllCoursesQuery } from "../../../../redux/features/course/courseApi";
+import Loader from "../../Common/Loader/Loader";
 import { format } from "timeago.js";
-import Loader from "../../Loader/Loader";
-import { useGetAllOrdersQuery } from "@/redux/features/order/orderApi";
+import { useGetAllOrdersQuery } from "../../../../redux/features/orders/ordersApi";
+import { useGetAllUsersQuery } from "../../../../redux/features/user/userApi";
+import { AiOutlineMail } from "react-icons/ai";
 
 type Props = {
   isDashboard?: boolean;
 };
 
 const AllInvoices = ({ isDashboard }: Props) => {
-  const { theme } = useTheme();
-  const { isLoading: ordersLoading, data: ordersData } = useGetAllOrdersQuery(
-    {}
-  );
-  const { isLoading: usersLoading, data: usersData } = useGetAllUsersQuery({});
-  const { isLoading: coursesLoading, data: coursesData } =
-    useGetAllCoursesQuery({});
+  const { theme, setTheme } = useTheme();
+  const { isLoading, data } = useGetAllOrdersQuery({});
+  const { data: usersData } = useGetAllUsersQuery({});
+  const { data: coursesData } = useGetAllCoursesQuery({});
 
-  const [orderData, setOrderData] = useState<any[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [orderData, setOrderData] = useState<any>([]);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (ordersData && usersData && coursesData) {
-      const temp = ordersData.orders.map((order: any) => {
-        const user = usersData.users.find((u: any) => u._id === order.userId);
-        const course = coursesData.courses.find(
-          (c: any) => c._id === order.courseId
+    if (data) {
+      const temp = data.orders.map((item: any) => {
+        const user = usersData?.users.find(
+          (user: any) => user._id === item.userId
         );
-
+        const course = coursesData?.courses.find(
+          (course: any) => course._id === item.courseId
+        );
         return {
-          ...order,
-          userName: user?.name || "Unknown User",
-          userEmail: user?.email || "unknown@email.com",
-          title: course?.name || "Deleted Course",
-          price: course?.price ? "$" + course.price : "$0",
-          formattedDate: order.createdAt
-            ? format(
-                typeof order.createdAt === "string"
-                  ? order.createdAt
-                  : order.createdAt.toDate?.() || new Date()
-              )
-            : "N/A",
+          ...item,
+          userName: user?.name,
+          userEmail: user?.email,
+          title: course?.name,
+          price: "$" + course?.price,
         };
       });
       setOrderData(temp);
     }
-  }, [ordersData, usersData, coursesData]);
-
-  const isLoading = ordersLoading || usersLoading || coursesLoading;
+  }, [data, usersData, coursesData]);
 
   const columns: any = [
     { field: "id", headerName: "ID", flex: 0.3 },
@@ -69,96 +53,198 @@ const AllInvoices = ({ isDashboard }: Props) => {
         ]),
     { field: "price", headerName: "Price", flex: 0.5 },
     ...(isDashboard
-      ? [{ field: "formattedDate", headerName: "Created At", flex: 0.5 }] // 6. Use preformatted date
+      ? [{ field: "created_at", headerName: "Created At", flex: 0.5 }]
       : [
           {
             field: " ",
             headerName: "Email",
             flex: 0.2,
-            renderCell: (params: any) => (
-              <a href={`mailto:${params.row.userEmail}`}>
-                <AiOutlineMail
-                  className="dark:text-white text-black"
-                  size={20}
-                />
-              </a>
-            ),
+            renderCell: (params: any) => {
+              return (
+                <Button>
+                  <a
+                    target="_blank"
+                    href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                      params.row.userEmail
+                    )}`}
+                  >
+                    <AiOutlineMail
+                      className="dark:text-white text-black"
+                      size={20}
+                    />
+                  </a>
+                </Button>
+              );
+            },
           },
         ]),
   ];
 
-  const rows = orderData.map((item: any) => ({
-    id: item._id,
-    userName: item.userName,
-    userEmail: item.userEmail,
-    title: item.title,
-    price: item.price,
-    formattedDate: item.formattedDate,
-  }));
+  const rows: any = [];
 
-  if (!mounted) return null;
+  orderData &&
+    orderData.forEach((item: any) => {
+      rows.push({
+        id: item._id,
+        userName: item.userName,
+        userEmail: item.userEmail,
+        title: item.title,
+        price: item.price,
+        created_at: format(item.createdAt),
+      });
+    });
 
   return (
-    <div className={!isDashboard ? "mt-[120px]" : "mt-[0px]"}>
+    <div className={!isDashboard ? "w-full min-h-screen pl-[260px] pt-6" : "mt-[0px]"}>
       {isLoading ? (
         <Loader />
       ) : (
         <Box m={isDashboard ? "0" : "40px"}>
           <Box
             m={isDashboard ? "0" : "40px 0 0 0"}
-            height={isDashboard ? "35vh" : "82.49vh"}
+            height={isDashboard ? "35vh" : "90vh"}
             overflow={"hidden"}
             sx={{
-              "& .MuiDataGrid-root": { border: "none", outline: "none" },
-              "& .css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon": {
-                color: theme === "dark" ? "#fff" : "#000",
+              "& .MuiDataGrid-root": {
+                border: "none",
+                outline: "none",
+                borderRadius: "12px",
+                overflow: "hidden",
               },
               "& .MuiDataGrid-sortIcon": {
-                color: theme === "dark" ? "#fff" : "#000",
+                color: "#fff",
               },
               "& .MuiDataGrid-row": {
-                color: theme === "dark" ? "#fff" : "#000",
-                borderBottom:
-                  theme === "dark"
-                    ? "1px solid #ffffff30!important"
-                    : "1px solid #ccc!important",
+                color:
+                  theme === "dark" ? "#fff !important" : "#1a1a1a !important",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                "&:hover": {
+                  backgroundColor: "rgba(100, 116, 139, 0.1) !important",
+                },
+                "&.Mui-selected": {
+                  backgroundColor: "rgba(59, 130, 246, 0.15) !important",
+                  "&:hover": {
+                    backgroundColor: "rgba(59, 130, 246, 0.25) !important",
+                  },
+                },
               },
               "& .MuiTablePagination-root": {
-                color: theme === "dark" ? "#fff" : "#000",
+                color: "#fff",
               },
               "& .MuiDataGrid-cell": {
-                borderBottom: "none!important",
-              },
-              "& .name-column--cell": {
-                color: theme === "dark" ? "#fff" : "#000",
-              },
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: theme === "dark" ? "#3e4396" : "#A4A9FC",
                 borderBottom: "none",
-                color: "#000",
+                fontSize: "14px",
               },
+              // Unified blue header theme
+              // "& .MuiDataGrid-columnHeaders": {
+              //   backgroundColor: "#3b82f6",
+              //   borderBottom: "none",
+              //   color: "#fff",
+              //   fontSize: "15px",
+              //   fontWeight: "600",
+              // },
+              // "& .MuiDataGrid-columnHeadersInner": {
+              //   backgroundColor: "#3b82f6",
+              // },
+              // "& .MuiDataGrid-columnHeader": {
+              //   backgroundColor: "#3b82f6",
+              //   color: "#fff",
+              // },
+              // "& .MuiDataGrid-columnHeaderCheckbox": {
+              //   backgroundColor: "#3b82f6",
+              // },
+              // Purple–Indigo Gradient Header Theme
+"& .MuiDataGrid-columnHeaders": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)", // purple → indigo
+  borderBottom: "none",
+  color: "#fff",
+  fontSize: "15px",
+  fontWeight: "600",
+},
+"& .MuiDataGrid-columnHeadersInner": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+},
+"& .MuiDataGrid-columnHeader": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+  color: "#fff",
+},
+"& .MuiDataGrid-columnHeaderCheckbox": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+},
+
+              "& .MuiDataGrid-columnHeaderTitle": {
+                fontWeight: "600",
+                color: "#fff",
+              },
+              // Body background adapts to theme
               "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: theme === "dark" ? "#1F2A40" : "#F2F0F0",
+                backgroundColor:
+                  theme === "dark"
+                    ? "#1e293b !important"
+                    : "#f8fafc !important",
               },
-              "& .MuiDataGrid-footerContainer": {
-                color: theme === "dark" ? "#fff" : "#000",
-                borderTop: "none",
-                backgroundColor: theme === "dark" ? "#3e4396" : "#A4A9FC",
-              },
+              // Footer matches header
+              // "& .MuiDataGrid-footerContainer": {
+              //   color: "#fff",
+              //   borderTop: "none",
+              //   backgroundColor: "#3b82f6",
+              //   borderBottomLeftRadius: "12px",
+              //   borderBottomRightRadius: "12px",
+              // },
+                           "& .MuiDataGrid-footerContainer": {
+  color: "#fff",
+  borderTop: "none",
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)", // purple → indigo
+  borderBottomLeftRadius: "12px",
+  borderBottomRightRadius: "12px",
+},
               "& .MuiCheckbox-root": {
-                color:
-                  theme === "dark" ? `#b7ebde !important` : `#000 !important`,
+                color: "#fff !important",
+              },
+              "& .MuiDataGrid-toolbarContainer": {
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                borderTopLeftRadius: "12px",
+                borderTopRightRadius: "12px",
               },
               "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
-                color: `${theme === "dark" ? "#fff" : "#000"} !important`, // Fixed toolbar color
+                color: "#fff !important",
+              },
+              "& .MuiDataGrid-columnSeparator": {
+                color: "rgba(255,255,255,0.3)",
+              },
+              // Menu and panel styling
+              "& .MuiDataGrid-panelHeader": {
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+              },
+              "& .MuiMenu-paper": {
+                backgroundColor:
+                  theme === "dark"
+                    ? "#334155 !important"
+                    : "#ffffff !important",
+                color:
+                  theme === "dark" ? "#fff !important" : "#1a1a1a !important",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                borderRadius: "8px",
+              },
+              // Icon colors
+              "& .css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon": {
+                color: "#fff",
+              },
+              "& .MuiDataGrid-menuIconButton": {
+                color: "#fff",
+              },
+              "& .MuiDataGrid-filterIcon": {
+                color: "#fff",
               },
             }}
           >
             <DataGrid
-              checkboxSelection={!isDashboard}
+              checkboxSelection={isDashboard ? false : true}
               rows={rows}
               columns={columns}
-              components={isDashboard ? {} : { Toolbar: GridToolbar }}
+              slots={isDashboard ? {} : { toolbar: GridToolbar }}
             />
           </Box>
         </Box>

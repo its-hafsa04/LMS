@@ -1,16 +1,13 @@
+"use client";
 import CourseDetailsPage from "../../components/Course/CourseDetailsPage";
+import React from "react";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
-
-const Page = async ({ params }: Props) => {
-  const resolvedParams = await params;
+const page = ({ params }: any) => {
   return (
-    <div>
-      <CourseDetailsPage id={resolvedParams.id} />
+    <div className="">
+      <CourseDetailsPage id={params.id} />
     </div>
   );
 };
 
-export default Page;
+export default page;

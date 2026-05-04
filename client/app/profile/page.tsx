@@ -1,27 +1,24 @@
 "use client";
-import React, { FC, useState } from "react";
+import React, { useState } from "react";
 import Protected from "../hooks/useProtected";
 import Header from "../components/Header";
-import Headings from "../utils/Heading";
+import PageHead from "../components/Common/PageHead";
 import Profile from "../components/Profile/Profile";
 import { useSelector } from "react-redux";
-import Footer from "../components/Footer/Footer";
+import Footer from "../components/Footer";
 
-type Props = object;
-
-const Page: FC<Props> = () => {
+const Page = () => {
+  const [route, setRoute] = useState("Login");
   const [open, setOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(5);
-  const [route, setRoute] = useState("Login");
   const { user } = useSelector((state: any) => state.auth);
-
   return (
-    <div>
+    <div className="min-h-screen">
       <Protected>
-        <Headings
-          title={`${user?.name}'s Profile - ELearning`}
-          description="ELearning is a platform for students to learn and get help from teachers"
-          keywords="Programming, MERN, Typescript, Redux"
+        <PageHead
+          title={`${user.name}'s Profile`}
+          description="ELearning is an interactive E-Learning platform where all students can learn and grow together"
+          keywords="Online Learning,  Learning, LMS, Programming, Tech"
         />
         <Header
           open={open}

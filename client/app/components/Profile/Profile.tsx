@@ -1,39 +1,25 @@
-import { useGetUserAllCoursesQuery } from "@/redux/features/courses/coursesApi";
+"use client";
+import { useEffect, useState } from "react";
+import SidebarProfile from "./SidebarProfile";
+import { useLogoutQuery } from "../../../redux/features/auth/authApi";
 import { signOut } from "next-auth/react";
-import { FC, useEffect, useState } from "react";
-import CourseCard from "../Course/CourseCard";
-import ChangePassword from "./ChangePassword";
 import ProfileInfo from "./ProfileInfo";
-import SideBarProfile from "./SideBarProfile";
-import { useLogOutQuery } from "@/redux/features/auth/authApi";
-import Loader from "../Loader/Loader";
-
-type Props = {
-  user: any;
-};
-
-const Profile: FC<Props> = ({ user }) => {
+import ChangePassword from "./ChangePassword";
+import { useGetAllUserCoursesQuery } from "@/redux/features/course/courseApi";
+import CourseCard from "../Course/CourseCard";
+import Loader from "../Common/Loader/Loader";
+import Link from "next/link";
+const Profile = ({ user }: { user: any }) => {
   const [scroll, setScroll] = useState(false);
-  const [active, setActive] = useState(1);
+  const [courses, setCourses] = useState([]);
   const [avatar, setAvatar] = useState(null);
+  const [active, setActive] = useState(1);
   const [logout, setLogout] = useState(false);
-  const [courses, setCourses] = useState<any>([]);
-  const { data, isLoading } = useGetUserAllCoursesQuery(undefined, {});
-  const {} = useLogOutQuery(undefined, {
+  const {} = useLogoutQuery(undefined, {
     skip: !logout ? true : false,
   });
 
-  useEffect(() => {
-    if (data && user && Array.isArray(user.course)) {
-      const filteredCourses = user.course
-        .map((userCourse: any) =>
-          data.courses.find((course: any) => userCourse.id === course.id)
-        )
-        .filter((course: any) => course !== undefined);
-      setCourses(filteredCourses);
-    }
-  }, [data, user]);
-
+  const { data, isLoading } = useGetAllUserCoursesQuery(undefined, {});
   const logoutHandler = async () => {
     setLogout(true);
     await signOut();
@@ -41,54 +27,73 @@ const Profile: FC<Props> = ({ user }) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScroll(window.scrollY > 85);
+      if (window.scrollY > 80) {
+        setScroll(true);
+      } else {
+        setScroll(false);
+      }
     };
-
     window.addEventListener("scroll", handleScroll);
+
+    // Cleanup function to remove event listener
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  console.log(data);
+  useEffect(() => {
+    if (data?.courses && user?.courses) {
+      const filteredCourses = user.courses
+        .map((userCourse: any) => {
+          return data.courses.find(
+            (course: any) => course._id === userCourse._id
+          );
+        })
+        .filter((course: any) => course !== undefined);
+
+      setCourses(filteredCourses);
+    }
+  }, [data, user]);
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <div className="w-[85%] flex mx-auto">
-          <div
-            className={`w-[60px] 800px:w-[310px] h-[450px] dark:bg-slate-900 bg-[#f5f5f5] bg-opacity-90 border dark:border-[#ffffff1d] border-[#00000012] rounded-[5px] shadow-md dark:shadow-sm mt-20 mb-20 sticky ${
-              scroll ? "top-[120px]" : "top-8"
-            } left-8`}
-          >
-            <SideBarProfile
-              user={user}
-              active={active}
-              setActive={setActive}
-              logOutHandler={logoutHandler}
-              avatar={avatar}
-            />
-          </div>
-          <div className="w-full h-full bg-transparent mt-20">
-            {active === 1 && <ProfileInfo user={user} avatar={avatar} />}
-            {active === 2 && <ChangePassword />}
-            {active === 3 && (
-              <div className="w-full pl-7 px-2 800px:px-10 800px:pl-8">
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3 xl:gap-[35px]">
-                  {courses &&
-                    courses.map((item: any, index: number) => (
-                      <CourseCard item={item} key={index} isProfile={true} />
-                    ))}
-                </div>
-                {courses.length === 0 && (
-                  <h1 className="text-center text-[18px] font-Poppins">
-                    You don&apos;t have any purchased courses!
-                  </h1>
-                )}
-              </div>
-            )}
-          </div>
+    <div className="w-[85%] flex mx-auto">
+      <div
+        className={`w-[60px] 800px:w-[310px] 800px:min-w-[310px]  h-[450px] bg-indigo-100 border-indigo-50 dark:bg-slate-900 bg-opacity-90 border dark:border-[#ffffff1d] rounded-[5px] shadow-sm mt-[80px] mb-[80px] sticky ${
+          scroll ? "top-[120px]" : "top-[30px]"
+        } left-[30px] `}
+      >
+        <SidebarProfile
+          user={user}
+          active={active}
+          avatar={avatar}
+          setActive={setActive}
+          logoutHandler={logoutHandler}
+        />
+      </div>
+      {active == 1 && (
+        <div className="w-full h-full bg-transparent mt-[80px]">
+          <ProfileInfo user={user} avatar={avatar} />
         </div>
       )}
-    </>
+      {active == 2 && (
+        <div className="w-full h-full bg-transparent mt-[80px]">
+          <ChangePassword />
+        </div>
+      )}
+
+      {active === 3 && (
+        <div className="w-full mx-10 h-full bg-transparent mt-[80px]">
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <div className="grid grid-cols-1 gap-[20px] md:grid-cols-2 md:gap-[25px] lg:grid-cols-3 lg:gap-[25px] 1500px:grid-cols-4 1500px:gap-[35px] mb-12 border-0">
+              {courses &&
+                courses.map((item: any, index: number) => (
+                  <CourseCard item={item} key={index} isProfile={true} />
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

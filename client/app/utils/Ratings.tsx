@@ -1,12 +1,9 @@
-import { FC } from "react";
 import { AiFillStar, AiOutlineStar } from "react-icons/ai";
 import { BsStarHalf } from "react-icons/bs";
-
 type Props = {
   rating: number;
 };
-
-const Ratings: FC<Props> = ({ rating }) => {
+const Ratings = ({ rating }: Props) => {
   const stars = [];
 
   for (let i = 1; i <= 5; i++) {
@@ -33,13 +30,13 @@ const Ratings: FC<Props> = ({ rating }) => {
         <AiOutlineStar
           key={i}
           size={20}
-          color="#f6ba00"
+          color="#f6b100"
           className="mr-2 cursor-pointer"
         />
       );
     }
   }
-  return <div className="flex mt-1 ml-2 800px:mt-0 800px:ml-0"> {stars}</div>;
+  return <div className="flex">{stars}</div>;
 };
 
 export default Ratings;

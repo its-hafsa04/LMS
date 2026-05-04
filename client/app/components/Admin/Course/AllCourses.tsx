@@ -1,36 +1,56 @@
-import { styles } from "@/app/styles/style";
+"use client";
+import { DataGrid } from "@mui/x-data-grid";
+import { Box, Button, Modal } from "@mui/material";
+import { AiOutlineDelete } from "react-icons/ai";
+import { LiaEditSolid } from "react-icons/lia";
+import { useTheme } from "next-themes";
 import {
   useDeleteCourseMutation,
   useGetAllCoursesQuery,
-} from "@/redux/features/courses/coursesApi";
-import { Box, Button, Modal } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
-import { useTheme } from "next-themes";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import { AiOutlineDelete } from "react-icons/ai";
-import { FiEdit2 } from "react-icons/fi";
+} from "@/redux/features/course/courseApi";
+import Loader from "../../Common/Loader/Loader";
 import { format } from "timeago.js";
-import Loader from "../../Loader/Loader";
-
-type Props = object;
-
+import { useEffect, useState } from "react";
+import { styles } from "@/app/styles/style";
+import toast from "react-hot-toast";
+import Link from "next/link";
 const AllCourses = () => {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [courseId, setCourseId] = useState("");
-  const [deleteCourse, { isSuccess, error }] = useDeleteCourseMutation();
-  const { isLoading, data, refetch, isFetching } = useGetAllCoursesQuery(
+
+  const { isLoading, data, refetch } = useGetAllCoursesQuery(
     {},
     { refetchOnMountOrArgChange: true }
   );
+  const [deleteCourse, { isSuccess: deleteSuccess, error: deleteError }] =
+    useDeleteCourseMutation({});
+
+  const handleDelete = () => {
+    if (!isLoading) {
+      deleteCourse(courseId);
+    }
+  };
 
   useEffect(() => {
-    console.log("Courses data:", data);
-    console.log("Fetching courses...", isFetching);
-  }, [data, isFetching]);
-  
+    if (deleteSuccess) {
+      refetch();
+      toast.success("Course deleted successfully!");
+    }
+    if (deleteError) {
+      if ("data" in deleteError) {
+        // Fix the error data access
+        const errorData = deleteError.data as {
+          success?: boolean;
+          message?: string;
+        };
+        toast.error(errorData?.message || "Deletion Failed");
+      } else {
+        // Handle other types of errors
+        toast.error("An unexpected error occurred");
+      }
+    }
+  }, [deleteSuccess, deleteError]);
   const columns = [
     { field: "id", headerName: "ID", flex: 0.5 },
     { field: "title", headerName: "Course Title", flex: 1 },
@@ -38,75 +58,50 @@ const AllCourses = () => {
     { field: "purchased", headerName: "Purchased", flex: 0.5 },
     { field: "created_at", headerName: "Created At", flex: 0.5 },
     {
-      field: "  ",
+      field: "edit",
       headerName: "Edit",
       flex: 0.2,
       renderCell: (params: any) => {
         return (
-          <>
-            <Link href={`/admin/edit-course/${params.row.id}`}>
-              <FiEdit2 className="dark:text-white text-black mt-4" size={20} />
-            </Link>
-          </>
+          <Link href={`/admin/edit-course/${params.row.id}`}>
+            <Button>
+              <LiaEditSolid className="dark:text-white text-black" size={20} />
+            </Button>
+          </Link>
         );
       },
     },
     {
-      field: " ",
+      field: "delete",
       headerName: "Delete",
       flex: 0.2,
       renderCell: (params: any) => {
         return (
-          <>
-            <Button
-              onClick={() => {
-                setOpen(true);
-                setCourseId(params.row.id);
-              }}
-            >
-              <AiOutlineDelete
-                className="dark:text-white text-black"
-                size={20}
-              />
-            </Button>
-          </>
+          <Button
+            onClick={() => {
+              setOpen(!open);
+              setCourseId(params.row.id);
+            }}
+          >
+            <AiOutlineDelete className="dark:text-white text-black" size={20} />
+          </Button>
         );
       },
     },
   ];
 
-  const rows = data
-    ? data.courses.map((course: any) => ({
-        id: course._id,
-        title: course.name,
-        ratings: course.ratings,
-        purchased: course.purchased,
-        created_at: format(course.createdAt),
-      }))
-    : [];
-
-  // useEffect(() => {
-  //   if (isSuccess) {
-  //     setOpen(false);
-  //     refetch();
-  //     toast.success("Course deleted successfully");
-  //   }
-  //   if (error && "data" in error) {
-  //     toast.error((error as any).data.message);
-  //   }
-  // }, [isSuccess, error]);
-
-  const handleDelete = async () => {
-    const id = courseId;
-    try {
-      await deleteCourse(id).unwrap();
-      toast.success("Course deleted successfully");
-      refetch();
-      setOpen(false);
-    } catch (err: any) {
-      toast.error(err?.data?.message || "Delete failed");
-    }
-  };
+  const rows: any[] = [];
+  if (data && data.courses) {
+    data.courses.forEach((item: any) => {
+      rows.push({
+        id: item._id,
+        title: item.name,
+        ratings: item.ratings,
+        purchased: item.purchased,
+        created_at: format(item.createdAt),
+      });
+    });
+  }
 
   return (
     <div className="mt-[120px]">
@@ -121,50 +116,145 @@ const AllCourses = () => {
               "& .MuiDataGrid-root": {
                 border: "none",
                 outline: "none",
+                borderRadius: "12px",
+                overflow: "hidden",
               },
-              "& .MuiDataGrid-columnHeaders": {
-                backgroundColor: theme === "dark" ? "#3e4396" : "#A4A9FC",
-                color: theme === "dark" ? "#000" : "#000",
-                borderBottom: "1px solid rgba(0,0,0,0.1)",
-                fontWeight: 600,
+              "& .MuiDataGrid-sortIcon": {
+                color: "#fff",
               },
               "& .MuiDataGrid-row": {
-                color: theme === "dark" ? "#edf2f7" : "#1a202c",
-                borderBottom:
-                  theme === "dark"
-                    ? "1px solid rgba(255,255,255,0.1)"
-                    : "1px solid rgba(0,0,0,0.05)",
-                transition: "background 0.3s",
+                color:
+                  theme === "dark" ? "#fff !important" : "#1a1a1a !important",
+                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                "&:hover": {
+                  backgroundColor: "rgba(100, 116, 139, 0.1) !important",
+                },
+                "&.Mui-selected": {
+                  backgroundColor: "rgba(59, 130, 246, 0.15) !important",
+                  "&:hover": {
+                    backgroundColor: "rgba(59, 130, 246, 0.25) !important",
+                  },
+                },
               },
-              "& .MuiDataGrid-row:hover": {
-                backgroundColor: theme === "dark" ? "#4a5568" : "#f0f4ff",
+              "& .MuiTablePagination-root": {
+                color: "#fff",
               },
               "& .MuiDataGrid-cell": {
                 borderBottom: "none",
+                fontSize: "14px",
               },
-              "& .MuiDataGrid-sortIcon": {
-                color: theme === "dark" ? "#cbd5e0" : "#4a5568",
+              // Unified blue header theme
+              // "& .MuiDataGrid-columnHeaders": {
+              //   backgroundColor: "#3b82f6",
+              //   borderBottom: "none",
+              //   color: "#fff",
+              //   fontSize: "15px",
+              //   fontWeight: "600",
+              // },
+              // "& .MuiDataGrid-columnHeadersInner": {
+              //   backgroundColor: "#3b82f6",
+              // },
+              // "& .MuiDataGrid-columnHeader": {
+              //   backgroundColor: "#3b82f6",
+              //   color: "#fff",
+              // },
+              // "& .MuiDataGrid-columnHeaderCheckbox": {
+              //   backgroundColor: "#3b82f6",
+              // },
+              // Purple–Indigo Gradient Header Theme
+"& .MuiDataGrid-columnHeaders": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)", // purple → indigo
+  borderBottom: "none",
+  color: "#fff",
+  fontSize: "15px",
+  fontWeight: "600",
+},
+"& .MuiDataGrid-columnHeadersInner": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+},
+"& .MuiDataGrid-columnHeader": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+  color: "#fff",
+},
+"& .MuiDataGrid-columnHeaderCheckbox": {
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)",
+},
+
+              "& .MuiDataGrid-columnHeaderTitle": {
+                fontWeight: "600",
+                color: "#fff",
               },
-              "& .MuiCheckbox-root": {
-                color:
-                  theme === "dark"
-                    ? "#63b3ed !important"
-                    : "#4a5568 !important",
-              },
+              // Body background adapts to theme
               "& .MuiDataGrid-virtualScroller": {
-                backgroundColor: theme === "dark" ? "#1a202c" : "#f9fafb",
+                backgroundColor:
+                  theme === "dark"
+                    ? "#1e293b !important"
+                    : "#f8fafc !important",
               },
-              "& .MuiTablePagination-root": {
-                color: theme === "dark" ? "#e2e8f0" : "#2d3748",
-              },
+              // Footer matches header
+              // "& .MuiDataGrid-footerContainer": {
+              //   color: "#fff",
+              //   borderTop: "none",
+              //   backgroundColor: "#3b82f6",
+              //   borderBottomLeftRadius: "12px",
+              //   borderBottomRightRadius: "12px",
+              // },
               "& .MuiDataGrid-footerContainer": {
-                color: theme === "dark" ? "#fff" : "#000",
-                borderTop: "none",
-                backgroundColor: theme === "dark" ? "#3e4396" : "#A4A9FC",
+  color: "#fff",
+  borderTop: "none",
+  background: "linear-gradient(90deg, #6d28d9, #4f46e5)", // purple → indigo
+  borderBottomLeftRadius: "12px",
+  borderBottomRightRadius: "12px",
+},
+
+              "& .MuiCheckbox-root": {
+                color: "#fff !important",
+              },
+              "& .MuiDataGrid-toolbarContainer": {
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                borderTopLeftRadius: "12px",
+                borderTopRightRadius: "12px",
+              },
+              "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
+                color: "#fff !important",
+              },
+              "& .MuiDataGrid-columnSeparator": {
+                color: "rgba(255,255,255,0.3)",
+              },
+              // Menu and panel styling
+              "& .MuiDataGrid-panelHeader": {
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+              },
+              "& .MuiMenu-paper": {
+                backgroundColor:
+                  theme === "dark"
+                    ? "#334155 !important"
+                    : "#ffffff !important",
+                color:
+                  theme === "dark" ? "#fff !important" : "#1a1a1a !important",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                borderRadius: "8px",
+              },
+              // Icon colors
+              "& .css-pqjvzy-MuiSvgIcon-root-MuiSelect-icon": {
+                color: "#fff",
+              },
+              "& .MuiDataGrid-menuIconButton": {
+                color: "#fff",
+              },
+              "& .MuiDataGrid-filterIcon": {
+                color: "#fff",
               },
             }}
           >
-            <DataGrid checkboxSelection rows={rows} columns={columns} />
+            <DataGrid
+              disableRowSelectionOnClick
+              checkboxSelection
+              rows={rows}
+              columns={columns}
+            />
           </Box>
           {open && (
             <Modal
@@ -179,14 +269,20 @@ const AllCourses = () => {
                 </h1>
                 <div className="flex w-full items-center justify-between mb-6 mt-4">
                   <div
-                    className={`${styles.button} !w-[120px] h-[30px] bg-[#47d097]`}
-                    onClick={() => setOpen(!open)}
+                    className={`${styles.button} !w-[120px] h-[30px] bg-[#57c7a3]`}
+                    onClick={() => {
+                      setOpen(!open);
+                      setCourseId("");
+                    }}
                   >
                     Cancel
                   </div>
                   <div
                     className={`${styles.button} !w-[120px] h-[30px] bg-[#d63f3f]`}
-                    onClick={handleDelete}
+                    onClick={() => {
+                      setOpen(false);
+                      handleDelete();
+                    }}
                   >
                     Delete
                   </div>

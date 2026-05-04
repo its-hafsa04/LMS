@@ -1,5 +1,4 @@
-"use-client";
-import React, { FC, useEffect, useState } from "react";
+"use client";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -8,25 +7,26 @@ import {
   AiFillGithub,
 } from "react-icons/ai";
 import { FcGoogle } from "react-icons/fc";
-import { styles } from "../../../app/styles/style";
+import { useEffect, useState } from "react";
+import { styles } from "../../styles/style";
 import { useLoginMutation } from "@/redux/features/auth/authApi";
 import toast from "react-hot-toast";
 import { signIn } from "next-auth/react";
 
 type Props = {
-  setRoute: (route: string) => void;
-  setOpen: (route: boolean) => void;
-  refetch: () => void;
+  setOpen: (open: boolean) => void;
+  setRoute?: (route: string) => void;
+  refetch: any;
 };
 
 const schema = Yup.object().shape({
   email: Yup.string()
-    .email("Invalid Email.")
-    .required("Please enter your Email."),
-  password: Yup.string().required("Please enter your password!").min(6),
+    .email("Invalid email")
+    .required("Please enter your email!"),
+  password: Yup.string().required("Please enter your passowrd!").min(6),
 });
 
-const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
+const Login = ({ setOpen, setRoute, refetch }: Props) => {
   const [show, setShow] = useState(false);
   const [login, { isSuccess, error }] = useLoginMutation();
 
@@ -40,33 +40,38 @@ const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
 
   useEffect(() => {
     if (isSuccess) {
-      toast.success("Login Successfull!");
+      toast.success("Login successfully");
       setOpen(false);
       refetch();
     }
     if (error) {
       if ("data" in error) {
-        const errorData = error as any;
-        toast.error(errorData?.data.message);
+        // Fix the error data access
+        const errorData = error.data as { success?: boolean; message?: string };
+        toast.error(errorData?.message || "Login failed");
+      } else {
+        // Handle other types of errors
+        toast.error("An unexpected error occurred");
       }
     }
-  }, [isSuccess, error, setOpen, refetch]);
+  }, [isSuccess, error]);
 
   const { errors, touched, values, handleChange, handleSubmit } = formik;
+
   return (
     <div className="w-full">
-      <h1 className={`${styles.title}`}>Login with E-Learning</h1>
+      <h1 className={`${styles.title}`}>Login to ELearning</h1>
       <form onSubmit={handleSubmit}>
-        <label htmlFor="email" className={`${styles.label}`}>
-          Enter your Email:
+        <label className={`${styles.label}`} htmlFor="email">
+          Enter your Email{" "}
         </label>
         <input
           type="email"
-          name=""
+          name="email"
           value={values.email}
           onChange={handleChange}
           id="email"
-          placeholder="loginemail@gmail.com"
+          placeholder="loginmail@gmail.com"
           className={`${errors.email && touched.email && "border-red-500"} ${
             styles.input
           }`}
@@ -75,8 +80,8 @@ const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
           <span className="text-red-500 pt-2 block">{errors.email}</span>
         )}
         <div className="w-full mt-5 relative mb-1">
-          <label htmlFor="email" className={`${styles.label}`}>
-            Enter your Password:
+          <label className={`${styles.label}`} htmlFor="password">
+            Enter your Password{" "}
           </label>
           <input
             type={!show ? "password" : "text"}
@@ -84,21 +89,21 @@ const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
             value={values.password}
             onChange={handleChange}
             id="password"
-            placeholder="passwords!@#%"
+            placeholder="password!@31"
             className={`${
               errors.password && touched.password && "border-red-500"
             } ${styles.input}`}
           />
           {!show ? (
             <AiOutlineEyeInvisible
-              className="absolute bottom-3 right-2 z-1 cursor-pointer"
-              size={20}
+              className="absolute bottom-2 right-2 z-1 cursor-pointer"
+              size={25}
               onClick={() => setShow(true)}
             />
           ) : (
             <AiOutlineEye
-              className="absolute bottom-3 right-2 z-1 cursor-pointer"
-              size={20}
+              className="absolute bottom-2 right-2 z-1 cursor-pointer"
+              size={25}
               onClick={() => setShow(false)}
             />
           )}
@@ -110,26 +115,26 @@ const Login: FC<Props> = ({ setRoute, setOpen, refetch }) => {
           <input type="submit" value="Login" className={`${styles.button}`} />
         </div>
         <br />
-        <h5 className="text-center pt-4 font-Poppins text-[14px] text-black dark:text-white">
+        <h5 className="text-center pt-4 font-Poppins text-sm text-black dark:text-white">
           Or join with
         </h5>
         <div className="flex items-center justify-center my-3">
           <FcGoogle
-            className="cursor-pointer mr-2"
-            size={30}
             onClick={() => signIn("google")}
+            size={30}
+            className="cursor-pointer ml-2"
           />
           <AiFillGithub
-            className="cursor-pointer mr-2"
             size={30}
-            onClick={() => signIn("Github")}
+            onClick={() => signIn("github")}
+            className="cursor-pointer ml-2"
           />
         </div>
-        <h5 className="text-center pt-4 font-Poppins text-[14px]">
-          Not have any account?
+        <h5 className="text-center pt-4 font-Poppins text-sm">
+          Don&apos;t have an acocunt?
           <span
             className="text-[#2190ff] pl-1 cursor-pointer"
-            onClick={() => setRoute("Sign-Up")}
+            onClick={() => setRoute && setRoute("Sign-Up")}
           >
             Sign Up
           </span>

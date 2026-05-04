@@ -1,47 +1,39 @@
 "use client";
-
-import Loader from "@/app/components/Loader/Loader";
+import Loader from "@/app/components/Common/Loader/Loader";
 import { useLoadUserQuery } from "@/redux/features/api/apiSlice";
-import { useRouter, useParams } from "next/navigation";
-import { useEffect } from "react";
+import { redirect } from "next/navigation";
+import React, { useEffect } from "react";
+import toast from "react-hot-toast";
 import CourseContent from "../../components/Course/CourseContent";
+type Props = {
+  params: any;
+};
+const Page = ({ params }: Props) => {
+  const id = params.id;
 
-const Page = () => {
-  const params = useParams();
-  const id = params.id as string;
-  const router = useRouter();
   const { isLoading, error, data } = useLoadUserQuery(undefined, {});
 
   useEffect(() => {
-    if (!isLoading && data) {
-      const user = data.user;
-      console.log("Loaded user:", user);
-
-      if (!user || !Array.isArray(user.course)) {
-        console.log("User not logged in or invalid course array");
-        router.push("/");
-        return;
+    if (data) {
+      const isPurchased = data.user.courses.find(
+        (item: any) => item._id === id
+      );
+      if (!isPurchased) {
+        redirect("/");
       }
 
-      const isPurchased = user.course.find((item: any) => item.courseId === id);
-
-      if (!isPurchased || error) {
-        console.log("Course not found or error");
-        router.push("/");
+      if (error) {
+        toast.error("You need to login first!");
+        redirect("/");
       }
     }
-
-    if (error) {
-      console.log("Query error:", error);
-    }
-  }, [data, error, id, isLoading, router]);
-
+  }, [data, error, id]);
   return (
     <>
       {isLoading ? (
         <Loader />
       ) : (
-        <div>
+        <div className="">
           <CourseContent id={id} user={data?.user} />
         </div>
       )}

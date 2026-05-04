@@ -1,29 +1,28 @@
-import {
-  useGetOrdersAnalyticsQuery,
-  useGetUserAnalyticsQuery,
-} from "@/redux/features/analytics/analyticsApi";
-import { Box, CircularProgress } from "@mui/material";
-import { FC, useEffect, useState } from "react";
+import React, { FC, useEffect, useState } from "react";
+import UserAnalytics from "../Analytics/UserAnalytics";
 import { BiBorderLeft } from "react-icons/bi";
 import { PiUsersFourLight } from "react-icons/pi";
-import OrdersAnalytics from "../Analytics/OrderAnalytics";
-import UserAnalytics from "../Analytics/UserAnalytics";
+import { Box, CircularProgress } from "@mui/material";
 import AllInvoices from "../Order/AllInvoices";
+import {
+  useGetOrdersAnalyticsQuery,
+  useGetUsersAnalyticsQuery,
+} from "../../../../redux/features/analytics/analyticApi";
+import OrderAnalytics from "../Analytics/OrderAnalytics";
 
 type Props = {
   open?: boolean;
   value?: number;
 };
 
-const CircularProgressWithLabel: FC<Props> = ({ open, value = 0 }) => {
-  // Added default value
+const CircularProgressWithLabel: FC<Props> = ({ open, value }) => {
   return (
     <Box sx={{ position: "relative", display: "inline-flex" }}>
       <CircularProgress
         variant="determinate"
         value={value}
         size={45}
-        color={value > 99 ? "info" : "error"}
+        color={value && value > 99 ? "info" : "error"}
         thickness={4}
         style={{ zIndex: open ? -1 : 1 }}
       />
@@ -43,172 +42,169 @@ const CircularProgressWithLabel: FC<Props> = ({ open, value = 0 }) => {
   );
 };
 
-// Initialize with default values
-type CompareData = {
-  currentMonth: number;
-  previousMonth: number;
-  percentChange: number;
-};
-
-const DEFAULT_COMPARE_DATA: CompareData = {
-  currentMonth: 0,
-  previousMonth: 0,
-  percentChange: 0,
-};
-
 const DashboardWidgets: FC<Props> = ({ open }) => {
-  const [ordersComparePercentage, setOrdersComparePercentage] =
-    useState<CompareData>(DEFAULT_COMPARE_DATA);
-  const [userComparePercentage, setUserComparePercentage] =
-    useState<CompareData>(DEFAULT_COMPARE_DATA);
+  const [ordersComparePercentage, setOrdersComparePercentage] = useState<any>();
+  const [userComparePercentage, setuserComparePercentage] = useState<any>();
 
-  // 1. Added refetchOnMountOrArgChange to ensure fresh data
-  const {
-    data: userData,
-    isLoading: userLoading,
-    isError: userError,
-  } = useGetUserAnalyticsQuery({}, { refetchOnMountOrArgChange: true });
-
-  const {
-    data: orderData,
-    isLoading: orderLoading,
-    isError: orderError,
-  } = useGetOrdersAnalyticsQuery({}, { refetchOnMountOrArgChange: true });
+  const { data, isLoading } = useGetUsersAnalyticsQuery({});
+  const { data: ordersData, isLoading: ordersLoading } =
+    useGetOrdersAnalyticsQuery({});
 
   useEffect(() => {
-    if (userLoading || orderLoading) return;
+    if (isLoading && ordersLoading) {
+      return;
+    } else {
+      if (data && ordersData) {
+        const usersLastTwoMonths = data.users.last12Months.slice(-2);
+        const ordersLastTwoMonths = ordersData.orders.last12Months.slice(-2);
 
-    // 2. Better data validation
-    const userMonths = userData?.users?.last12Months || [];
-    const orderMonths = orderData?.orders?.last12Months || [];
+        if (
+          usersLastTwoMonths.length === 2 &&
+          ordersLastTwoMonths.length === 2
+        ) {
+          const usersCurrentMonth = usersLastTwoMonths[1].count;
+          const usersPreviousMonth = usersLastTwoMonths[0].count;
+          const ordersCurrentMonth = ordersLastTwoMonths[1].count;
+          const ordersPreviousMonth = ordersLastTwoMonths[0].count;
 
-    // User analytics calculation
-    if (userMonths.length >= 2) {
-      const userLastTwo = userMonths.slice(-2);
-      const current = userLastTwo[1]?.count || 0;
-      const previous = userLastTwo[0]?.count || 0;
+          const usersPercentChange =
+            usersPreviousMonth !== 0
+              ? ((usersCurrentMonth - usersPreviousMonth) /
+                  usersPreviousMonth) *
+                100
+              : 100;
 
-      setUserComparePercentage({
-        currentMonth: current,
-        previousMonth: previous,
-        percentChange:
-          previous > 0
-            ? ((current - previous) / previous) * 100
-            : current > 0
-            ? 100
-            : 0,
-      });
+          const ordersPercentChange =
+            ordersPreviousMonth !== 0
+              ? ((ordersCurrentMonth - ordersPreviousMonth) /
+                  ordersPreviousMonth) *
+                100
+              : 100;
+
+          setuserComparePercentage({
+            currentMonth: usersCurrentMonth,
+            previousMonth: usersPreviousMonth,
+            percentChange: usersPercentChange,
+          });
+
+          setOrdersComparePercentage({
+            currentMonth: ordersCurrentMonth,
+            previousMonth: ordersPreviousMonth,
+            percentChange: ordersPercentChange,
+          });
+        }
+      }
     }
-
-    // Orders analytics calculation
-    if (orderMonths.length >= 2) {
-      const orderLastTwo = orderMonths.slice(-2);
-      const current = orderLastTwo[1]?.count || 0;
-      const previous = orderLastTwo[0]?.count || 0;
-
-      setOrdersComparePercentage({
-        currentMonth: current,
-        previousMonth: previous,
-        percentChange:
-          previous > 0
-            ? ((current - previous) / previous) * 100
-            : current > 0
-            ? 100
-            : 0,
-      });
-    }
-  }, [userData, orderData, userLoading, orderLoading]);
-
-  // 3. Show loading state
-  if (userLoading || orderLoading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center">
-        <CircularProgress />
-      </div>
-    );
-  }
-
-  // 4. Show error state
-  if (userError || orderError) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center text-red-500">
-        Failed to load analytics data
-      </div>
-    );
-  }
+  }, [isLoading, ordersLoading, data, ordersData]);
 
   return (
-    <div className="mt-[30px] min-h-screen ml-8">
-      <div className="grid grid-cols-[75%,25%]">
-        <div className="p-8">
-          <UserAnalytics isDashboard={true} />
+    <div className="space-y-6">
+      {/* Top Section - Analytics and Stats */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* User Analytics - Takes 3 columns on xl screens */}
+        <div className="xl:col-span-3">
+          <div className="bg-white dark:bg-[#111C43] rounded-lg shadow-lg p-6 h-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              User Analytics
+            </h3>
+            <UserAnalytics isDashboard={true} />
+          </div>
         </div>
 
-        <div className="pt-[80px] pr-8">
-          <div className="w-full dark:bg-[#111C43] rounded-sm shadow">
-            <div className="flex items-center p-5 justify-between">
-              <div>
-                <BiBorderLeft className="dark:text-[#45CBA0] text-[#000] text-[30px]" />
-                <h5 className="pt-2 font-Poppins dark:text-[#fff] text-black text-[20px]">
-                  {ordersComparePercentage.currentMonth}{" "}
-                  {/* Removed optional chaining */}
-                </h5>
-                <h5 className="py-2 font-Poppins dark:text-[#45CBA0] text-black text-[20px] font-[400]">
+        {/* Stats Cards - Takes 1 column on xl screens, stacks on smaller screens */}
+        <div className="xl:col-span-1 space-y-4">
+          {/* Sales Card */}
+          <div className="bg-white dark:bg-[#111C43] rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center mb-2">
+                  <BiBorderLeft className="dark:text-[#45CBA0] text-gray-700 text-2xl mr-2" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Sales
+                  </span>
+                </div>
+                <h4 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {ordersComparePercentage?.currentMonth || 0}
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-[#45CBA0]">
                   Sales Obtained
-                </h5>
+                </p>
               </div>
-              <div>
+              <div className="flex flex-col items-center">
                 <CircularProgressWithLabel
-                  value={ordersComparePercentage.percentChange > 0 ? 100 : 0}
+                  value={ordersComparePercentage?.percentChange > 0 ? 100 : 0}
                   open={open}
                 />
-                <h5 className="text-center pt-4">
-                  {ordersComparePercentage.percentChange > 0
-                    ? "+" + ordersComparePercentage.percentChange.toFixed(2)
-                    : ordersComparePercentage.percentChange.toFixed(2)}{" "}
-                  % {/* Fixed negative sign */}
-                </h5>
+                <span className="text-xs font-medium mt-2 text-gray-600 dark:text-white">
+                  {ordersComparePercentage?.percentChange > 0
+                    ? "+" + ordersComparePercentage?.percentChange.toFixed(2)
+                    : ordersComparePercentage?.percentChange?.toFixed(2) ||
+                      "0"}{" "}
+                  %
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="w-full dark:bg-[#111C43] rounded-sm shadow my-8">
-            <div className="flex items-center p-5 justify-between">
-              <div>
-                <PiUsersFourLight className="dark:text-[#45CBA0] text-[#000] text-[30px]" />
-                <h5 className="pt-2 font-Poppins dark:text-[#fff] text-black text-[20px]">
-                  {userComparePercentage.currentMonth}
-                </h5>
-                <h5 className="py-2 font-Poppins dark:text-[#45CBA0] text-black text-[20px] font-[400]">
+          {/* Users Card */}
+          <div className="bg-white dark:bg-[#111C43] rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center mb-2">
+                  <PiUsersFourLight className="dark:text-[#45CBA0] text-gray-700 text-2xl mr-2" />
+                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Users
+                  </span>
+                </div>
+                <h4 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {userComparePercentage?.currentMonth || 0}
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-[#45CBA0]">
                   New Users
-                </h5>
+                </p>
               </div>
-              <div>
+              <div className="flex flex-col items-center">
                 <CircularProgressWithLabel
-                  value={userComparePercentage.percentChange > 0 ? 100 : 0}
+                  value={userComparePercentage?.percentChange > 0 ? 100 : 0}
                   open={open}
                 />
-                <h5 className="text-center pt-4">
-                  {userComparePercentage.percentChange > 0
-                    ? "+" + userComparePercentage.percentChange.toFixed(2)
-                    : userComparePercentage.percentChange.toFixed(2)}{" "}
+                <span className="text-xs font-medium mt-2 text-gray-600 dark:text-white">
+                  {userComparePercentage?.percentChange > 0
+                    ? "+" + userComparePercentage?.percentChange.toFixed(2)
+                    : userComparePercentage?.percentChange?.toFixed(2) ||
+                      "0"}{" "}
                   %
-                </h5>
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-[65%,35%] mt-[-20px]">
-        <div className="dark:bg-[#111c43] w-[94%] mt-[30px] h-[40vh] shadow-sm m-auto">
-          <OrdersAnalytics isDashboard={true} />
+      {/* Bottom Section - Order Analytics and Recent Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Order Analytics - Takes 2 columns on lg screens */}
+        <div className="lg:col-span-2">
+          <div className="bg-white dark:bg-[#111c43] rounded-lg shadow-lg p-6 h-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Order Analytics
+            </h3>
+            <div className="h-80">
+              <OrderAnalytics isDashboard={true} />
+            </div>
+          </div>
         </div>
-        <div className="p-5">
-          <h5 className="dark:text-[#fff] text-black text-[20px] font-[400] font-Poppins pb-3">
-            Recent Transactions
-          </h5>
-          <AllInvoices isDashboard={true} />
+
+        {/* Recent Transactions - Takes 1 column on lg screens */}
+        <div className="lg:col-span-1">
+          <div className="bg-white dark:bg-[#111c43] rounded-lg shadow-lg p-6 h-full">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Recent Transactions
+            </h3>
+            <div className="overflow-y-auto max-h-80">
+              <AllInvoices isDashboard={true} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

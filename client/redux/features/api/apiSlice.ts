@@ -4,23 +4,19 @@ import { userLoggedIn } from "../auth/authSlice";
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    // make sure we send cookies and have a sane default
-    baseUrl: process.env.NEXT_PUBLIC_SERVER_URI || "http://localhost:8000/api/v1",
-    credentials: "include",
+    baseUrl: process.env.NEXT_PUBLIC_SERVER_URI,
   }),
   endpoints: (builder) => ({
     refreshToken: builder.query({
-      query: () => ({
-        // server route is /refresh
-        url: "refresh",
+      query: (data) => ({
+        url: "user/refresh-token",
         method: "GET",
         credentials: "include" as const,
       }),
     }),
     loadUser: builder.query({
-      query: () => ({
-        // server route is /me
-        url: "me",
+      query: (data) => ({
+        url: "user/me",
         method: "GET",
         credentials: "include" as const,
       }),
@@ -29,11 +25,11 @@ export const apiSlice = createApi({
           const result = await queryFulfilled;
           dispatch(
             userLoggedIn({
-              accessToken: result.data?.accessToken,
-              user: result.data?.user,
+              accessToken: result.data.accessToken,
+              user: result.data.user,
             })
           );
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.log(error);
         }
       },

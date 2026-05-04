@@ -1,24 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Footer from "../components/Footer/Footer";
+import PageHead from "../components/Common/PageHead";
 import Header from "../components/Header";
-import Headings from "../utils/Heading";
 import Policy from "./Policy";
 
-type Props = object;
-
 const Page = () => {
+  const [route, setRoute] = useState("Login");
   const [open, setOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(3);
-  const [route, setRoute] = useState("Login");
-
   return (
-    <div>
-      <Headings
+    <div className="">
+      <PageHead
         title="Policy - ELearning"
-        description="ELearning is a learning management system for helping programmers"
-        keywords="programming,MERN"
+        description="ELearningis an interactive E-Learning platform where all students can learn and grow together"
+        keywords="Online Learning, Learning, LMS, Programming, Tech"
       />
       <Header
         open={open}
@@ -28,7 +24,6 @@ const Page = () => {
         route={route}
       />
       <Policy />
-      <Footer />
     </div>
   );
 };

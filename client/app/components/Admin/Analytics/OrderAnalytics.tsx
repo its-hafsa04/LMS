@@ -1,39 +1,27 @@
-import { styles } from "@/app/styles/style";
-import { useGetOrdersAnalyticsQuery } from "@/redux/features/analytics/analyticsApi";
 import {
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
   CartesianGrid,
   Legend,
   Line,
-  LineChart,
-  ResponsiveContainer,
   Tooltip,
-  XAxis,
-  YAxis,
+  LineChart,
 } from "recharts";
-import Loader from "../../Loader/Loader";
-
+import Loader from "../../Common/Loader/Loader";
+import { styles } from "@/app/styles/style";
+import { useGetOrdersAnalyticsQuery } from "@/redux/features/analytics/analyticApi";
 type Props = {
   isDashboard?: boolean;
 };
-
-export default function OrdersAnalytics({ isDashboard }: Props) {
+const OrderAnalytics = ({ isDashboard }: Props) => {
   const { data, isLoading } = useGetOrdersAnalyticsQuery({});
 
-  // const analyticsData = [
-  //   { name: "Page A", Count: 4000 },
-  //   { name: "Page B", Count: 3000 },
-  //   { name: "Page C", Count: 5000 },
-  //   { name: "Page D", Count: 1000 },
-  //   { name: "Page E", Count: 4000 },
-  //   { name: "Page F", Count: 800 },
-  //   { name: "Page G", Count: 200 },
-  // ];
-
   const analyticsData: any = [];
-
-  data?.orders?.last12Months?.forEach((item: any) => {
-    analyticsData.push({ name: item.name, Count: item.count });
-  });
+  data &&
+    data.orders.last12Months.forEach((item: any) => {
+      analyticsData.push({ name: item.month, Count: item.count });
+    });
 
   return (
     <>
@@ -45,15 +33,15 @@ export default function OrdersAnalytics({ isDashboard }: Props) {
             className={isDashboard ? "mt-[0px] pl-[40px] mb-2" : "mt-[50px]"}
           >
             <h1
-              className={`${styles.title} ${
+              className={`${styles.title}  ${
                 isDashboard && "!text-[20px]"
-              } px-5 !text-start`}
+              } !px-5 !text-start `}
             >
               Orders Analytics
             </h1>
             {!isDashboard && (
               <p className={`${styles.label} px-5`}>
-                Last 12 months analytics data
+                Last 12 months analytic data
               </p>
             )}
           </div>
@@ -90,4 +78,6 @@ export default function OrdersAnalytics({ isDashboard }: Props) {
       )}
     </>
   );
-}
+};
+
+export default OrderAnalytics;

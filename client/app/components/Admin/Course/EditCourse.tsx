@@ -1,130 +1,172 @@
-"use client";
-import { useRouter } from "next/navigation";
-import { FC, useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
-import {
-  useEditCourseMutation,
-  useGetAllCoursesQuery,
-} from "../../../../redux/features/courses/coursesApi";
+import { useEffect, useState } from "react";
 import CourseInformation from "./CourseInformation";
+import CourseOptions from "./CourseOptions";
 import CourseData from "./CourseData";
 import CourseContent from "./CourseContent";
 import CoursePreview from "./CoursePreview";
-import CourseOptions from "./CourseOptions";
-
+import {
+  useGetAllCoursesQuery,
+  useUpdateCourseMutation,
+} from "@/redux/features/course/courseApi";
+import toast from "react-hot-toast";
+import { redirect } from "next/navigation";
 type Props = {
-  id: string;
+  id: any;
 };
-
-const EditCourse: FC<Props> = ({ id }) => {
-  const router = useRouter();
-  const [editCourse, { isSuccess, error, isLoading: isEditLoading }] =
-    useEditCourseMutation();
-  const { data, isLoading } = useGetAllCoursesQuery(
+const EditCourse = ({ id }: Props) => {
+  const { data, refetch } = useGetAllCoursesQuery(
     {},
     { refetchOnMountOrArgChange: true }
   );
 
-  const editCourseData = data?.courses.find((course: any) => course._id === id);
+  const [updateCourse, { isSuccess, error }] = useUpdateCourseMutation();
 
+  const editCourseData = data && data?.courses.find((i: any) => i._id === id);
   useEffect(() => {
     if (isSuccess) {
-      toast.success("Course Updated Successfully");
-      router.push("/admin/courses");
+      toast.success("Course updated successfully!");
+      redirect("/admin/courses");
     }
     if (error) {
       if ("data" in error) {
-        const errorMessage = error as any;
-        toast.error(errorMessage.data.message);
+        // Fix the error data access
+        const errorData = error.data as { success?: boolean; message?: string };
+        toast.error(errorData?.message || "Course failed");
       } else {
-        toast.error("An error occurred");
+        // Handle other types of errors
+        toast.error("An unexpected error occurred");
       }
     }
-  }, [isSuccess, error, router]);
+  }, [isSuccess, error]);
 
-  const [active, setActive] = useState(0);
-  const [courseInfo, setCourseInfo] = useState({
-    name: "",
-    description: "",
-    price: "",
-    estimatedPrice: "",
-    tags: "",
-    level: "",
-    categories: "",
-    demoUrl: "",
-    thumbnail: "",
-  });
-  const [benefits, setBenefits] = useState([{ title: "" }]);
-  const [prerequisites, setPrerequisites] = useState([{ title: "" }]);
-  const [courseContentData, setCourseContentData] = useState<any>([]);
-
-  // Initialize form with course data
   useEffect(() => {
     if (editCourseData) {
       setCourseInfo({
         name: editCourseData.name,
         description: editCourseData.description,
         price: editCourseData.price,
-        estimatedPrice: editCourseData?.estimatedPrice,
+        estimatedPrice: editCourseData.estimatedPrice,
+        category: editCourseData.category,
         tags: editCourseData.tags,
         level: editCourseData.level,
-        categories: editCourseData.categories,
         demoUrl: editCourseData.demoUrl,
-        thumbnail: editCourseData?.thumbnail?.url,
+        thumbnail: editCourseData.thumbnail.url,
       });
-      setBenefits(editCourseData.benefits || []);
-      setPrerequisites(editCourseData.prerequisites || []);
-      setCourseContentData(editCourseData.courseData || []);
+
+      // Deep copy benefits array
+      setBenefits(
+        editCourseData.benefits.map((benefit: any) => ({
+          title: benefit.title,
+        }))
+      );
+
+      // Deep copy prerequisites array
+      setPrerequisites(
+        editCourseData.prerequisites.map((prerequisite: any) => ({
+          title: prerequisite.title,
+        }))
+      );
+
+      // Deep copy courseContentData array with nested objects
+      setCourseContentData(
+        editCourseData.courseData.map((content: any) => ({
+          videoUrl: content.videoUrl,
+          title: content.title,
+          description: content.description,
+          videoSection: content.videoSection,
+          videoLength: content.videoLength,
+          suggestion: content.suggestion,
+          _id: content._id, // Keep the ID for updates
+          links: content.links.map((link: any) => ({
+            title: link.title,
+            url: link.url,
+            _id: link._id, // Keep link IDs if they exist
+          })),
+          questions: content.questions
+            ? content.questions.map((q: any) => ({ ...q }))
+            : [],
+        }))
+      );
     }
   }, [editCourseData]);
+  const [active, setActive] = useState(0);
+  const [courseInfo, setCourseInfo] = useState({
+    name: "",
+    description: "",
+    category: "",
+    price: "",
+    estimatedPrice: "",
+    tags: "",
+    level: "",
+    demoUrl: "",
+    thumbnail: "",
+  });
 
-  const handleCourseEdit = async () => {
-    // Format data directly from state
+  const [benefits, setBenefits] = useState([{ title: "" }]);
+  const [prerequisites, setPrerequisites] = useState([{ title: "" }]);
+  const [courseContentData, setCourseContentData] = useState([
+    {
+      videoUrl: "",
+      title: "",
+      description: "",
+      videoSection: "Untitled Section",
+      videoLength: "",
+      links: [
+        {
+          title: "",
+          url: "",
+        },
+      ],
+      suggestion: "",
+    },
+  ]);
+  const [courseData, setCourseData] = useState({});
+
+  const handleSubmit = async () => {
+    // Format Benefits
     const formattedBenefits = benefits.map((benefit) => ({
       title: benefit.title,
     }));
-
-    const formattedPrerequisites = prerequisites.map((prerequisite) => ({
-      title: prerequisite.title,
+    // Format Prerequisites
+    const formattedPrerequisites = prerequisites.map((prequisite) => ({
+      title: prequisite.title,
     }));
-
-    const formattedCourseContentData = courseContentData.map(
-      (courseContent: any) => ({
-        videoUrl: courseContent.videoUrl,
-        title: courseContent.title,
-        description: courseContent.description,
-        videoSection: courseContent.videoSection,
-        videoLength: courseContent.videoLength,
-        links: courseContent.links.map((link: any) => ({
-          title: link.title,
-          url: link.url,
-        })),
-        suggestion: courseContent.suggestion,
-      })
-    );
-
+    // Format Course Content
+    const formattedCourseContetnt = courseContentData.map((courseContent) => ({
+      videoUrl: courseContent.videoUrl,
+      title: courseContent.title,
+      videoSection: courseContent.videoSection,
+      description: courseContent.description,
+      videoLength: courseContent.videoLength,
+      links: courseContent.links.map((link) => ({
+        title: link.title,
+        url: link.url,
+      })),
+      suggestion: courseContent.suggestion,
+    }));
+    // Forming Data
     const data = {
       name: courseInfo.name,
       description: courseInfo.description,
-      categories: courseInfo.categories,
       price: courseInfo.price,
       estimatedPrice: courseInfo.estimatedPrice,
       tags: courseInfo.tags,
+      category: courseInfo.category,
       thumbnail: courseInfo.thumbnail,
       level: courseInfo.level,
       demoUrl: courseInfo.demoUrl,
       totalVideos: courseContentData.length,
       benefits: formattedBenefits,
       prerequisites: formattedPrerequisites,
-      courseContent: formattedCourseContentData,
+      courseData: formattedCourseContetnt,
     };
 
-    if (!editCourseData?._id) {
-      toast.error("Course ID is missing");
-      return;
-    }
+    setCourseData(data);
+  };
 
-    await editCourse({ id: editCourseData._id, data });
+  const handleCourseCreate = async (e: any) => {
+    const data = courseData;
+    await updateCourse({ id, data });
   };
 
   return (
@@ -138,46 +180,36 @@ const EditCourse: FC<Props> = ({ id }) => {
             setActive={setActive}
           />
         )}
-
         {active === 1 && (
           <CourseData
             benefits={benefits}
             setBenefits={setBenefits}
+            active={active}
+            setActive={setActive}
             prerequisites={prerequisites}
             setPrerequisites={setPrerequisites}
-            active={active}
-            setActive={setActive}
           />
         )}
-
         {active === 2 && (
           <CourseContent
-            active={active}
-            setActive={setActive}
             courseContentData={courseContentData}
             setCourseContentData={setCourseContentData}
-            handleSubmit={() => {}} // Not needed for edit flow
+            active={active}
+            setActive={setActive}
+            handleSubmit={handleSubmit}
           />
         )}
-
         {active === 3 && (
           <CoursePreview
             active={active}
             setActive={setActive}
-            courseData={{
-              ...courseInfo,
-              benefits,
-              prerequisites,
-              courseContent: courseContentData,
-              totalVideos: courseContentData.length,
-            }}
-            handleCourseCreate={handleCourseEdit}
+            courseData={courseData}
+            handleCourseCreate={handleCourseCreate}
             isEdit={true}
-            isUpdating={isEditLoading}
           />
         )}
       </div>
-      <div className="w-[20%] mt-[100px] h-screen fixed z-10 top-18 right-0">
+      <div className="w-[20%] mt-[100px] h-screen fixed z-[-1] top-18 right-0">
         <CourseOptions active={active} setActive={setActive} />
       </div>
     </div>

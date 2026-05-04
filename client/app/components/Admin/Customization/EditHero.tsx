@@ -1,55 +1,55 @@
-/* eslint-disable @next/next/no-img-element */
-import { styles } from "@/app/styles/style";
-import { useEffect, useState } from "react";
-import { toast } from "react-hot-toast";
-import { AiOutlineCamera } from "react-icons/ai";
-import { CiEdit } from "react-icons/ci";
-import Loader from "../../Loader/Loader";
+"use client";
 import {
-  useEditLayoutMutation,
   useGetHeroDataQuery,
+  useUpdateHeroDataMutation,
 } from "@/redux/features/layout/layoutApi";
-
-type Props = object;
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { AiOutlineCamera } from "react-icons/ai";
 
 const EditHero = () => {
-  const [image, setImage] = useState("");
   const [title, setTitle] = useState("");
+  const [image, setImage] = useState("");
   const [subTitle, setSubTitle] = useState("");
   const { data, refetch } = useGetHeroDataQuery("Banner", {
     refetchOnMountOrArgChange: true,
   });
-  const [editLayout, { isLoading, isSuccess, error }] = useEditLayoutMutation();
+
+  const [updateHeroData, { isSuccess, error, reset }] =
+    useUpdateHeroDataMutation();
 
   useEffect(() => {
-    if (data && !title && !subTitle && !image) {
-      setTitle(data?.layout?.banner?.title);
-      setSubTitle(data?.layout?.banner?.subTitle);
+    if (data) {
+      setTitle(data?.layout?.banner.title);
+      setSubTitle(data?.layout?.banner.subTitle);
       setImage(data?.layout?.banner?.image?.url);
     }
   }, [data]);
 
+  // Separate effect for handling success/error
   useEffect(() => {
     if (isSuccess) {
       refetch();
-      toast.success("Hero updated successfully!");
+      toast.success("Hero banner updated successfully!");
+      reset(); // Reset the mutation state
     }
-  }, [isSuccess, refetch]);
 
-  useEffect(() => {
-    if (error && "data" in error) {
-      const errorData = error as any;
-      toast.error(errorData?.data?.message);
+    if (error) {
+      if ("data" in error) {
+        const errorData = error.data as { success?: boolean; message?: string };
+        toast.error(errorData?.message || "Update failed");
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+      reset(); // Reset the mutation state
     }
-  }, [error]);
+  }, [isSuccess, error, refetch, reset]);
 
-  console.log("🚀 ~ EditHero ~ data:", data);
-
-  const handleUpdate = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpdate = (e: any) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      reader.onload = (e: any) => {
         if (reader.readyState === 2) {
           setImage(e.target.result as string);
         }
@@ -58,103 +58,93 @@ const EditHero = () => {
     }
   };
 
-  const handleEdit = async () => {
-    const data = {
+  const handleSubmit = async () => {
+    await updateHeroData({
       type: "Banner",
+      image,
       title,
       subTitle,
-      image,
-    };
-    await editLayout(data);
+    });
   };
 
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <div className="w-full 1000px:flex items-center">
-          <div className="absolute top-[100px] 1000px:top-[unset] 1500px:h-[700px] 1500px:w-[700px] 1100px:h-[500px] 1100px:w-[500px] h-[50vh] w-[50vh] hero_animation rounded-[50%] 1100px:left-[18rem] 1500px:left-[21rem]">
-            {image && (
-              <label htmlFor="banner" className="absolute top-24 right-24 z-20">
-                <CiEdit className="dark:text-white text-black text-[24px] cursor-pointer" />
-              </label>
-            )}
-          </div>
-
-          <div className="1000px:w-[40%] flex 1000px:min-h-screen items-center justify-end pt-[70px] 1000px:pt-[0] z-10">
-            <div className="relative flex items-center justify-end">
-              {image ? (
-                <img
-                  src={image}
-                  alt="Banner"
-                  className="object-contain pointer-events-none ml-10 1100px:max-w-[90%] w-[90%] 1500px:max-w-[85%] h-[auto] z-[10]"
-                />
-              ) : null}
-              <input
-                type="file"
-                name=""
-                id="banner"
-                accept="image/*"
-                onChange={handleUpdate}
-                className="hidden"
-              />
-              {!image && (
-                <label
-                  htmlFor="banner"
-                  className="absolute bottom-0 right-20 z-20"
-                >
-                  <AiOutlineCamera className="dark:text-white text-black text-[18px] cursor-pointer" />
-                </label>
-              )}
-            </div>
-          </div>
-          <div className="1000px:w-[60%] flex flex-col items-center 1000px:mt-[0px] text-center 1000px:text-left mt-[150px]">
-            <textarea
-              className="dark:text-white resize-none text-[#000000c7] text-[30px] px-3 w-full 1000px:text-[60px] 1500px:text-[70px] font-[600] font-Josefin py-2 1000px:leading-[75px] 1500px:w-[60%] 1100px:w-[78%] outline-none bg-transparent block"
-              placeholder="Improve Your Online Learning Experience Better Instantly"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              rows={4}
-            />
-            <br />
-            <textarea
-              className="dark:text-[#edfff4] text-[#000000ac] font-Josefin font-[600] text-[18px] 1500px:!w-[55%] 1100px:!w-[74%] bg-transparent outline-none resize-none"
-              placeholder="Learn from the best instructors and take your skills to the next level."
-              value={subTitle}
-              onChange={(e) => setSubTitle(e.target.value)}
-              rows={4}
+    <div className="min-h-screen flex items-center justify-between pl-20 pr-20 p-8">
+      <div className="flex justify-start items-center">
+        {/* Main circular background */}
+        <div className="relative w-96 h-96 lg:w-[500px] lg:h-[500px] bg-gradient-to-br from-blue-600 to-purple-700 rounded-full flex items-center justify-center">
+          {/* Main image */}
+          <div className="relative">
+            <img
+              src={image || "/api/placeholder/300/300"}
+              alt="hero-img"
+              className="w-72 h-72 lg:w-96 lg:h-96 object-cover rounded-2xl"
             />
 
-            <br />
-            <br />
-            <br />
-            <div
-              className={`${
-                styles.button
-              } !w-[100px] !min-h-[40px] !h-[40px] dark:text-white text-black bg-[#cccccc34] 
-              ${
-                data?.layout?.banner?.title !== title ||
-                data?.layout?.banner?.subTitle !== subTitle ||
-                data?.layout?.banner?.image?.url !== image
-                  ? "!cursor-pointer !bg-[#42d383]"
-                  : "!cursor-not-allowed"
-              }
-              !rounded absolute bottom-12 right-12`}
-              onClick={
-                data?.layout?.banner?.title !== title ||
-                data?.layout?.banner?.subTitle !== subTitle ||
-                data?.layout?.banner?.image?.url !== image
-                  ? handleEdit
-                  : () => null
-              }
+            {/* Camera overlay */}
+            <input
+              type="file"
+              name=""
+              id="banner"
+              accept="image/*"
+              onChange={handleUpdate}
+              className="hidden"
+            />
+            <label
+              htmlFor="banner"
+              className="absolute -bottom-4 -right-4 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg cursor-pointer"
             >
-              Save
-            </div>
+              <AiOutlineCamera className="text-xl text-gray-700" />
+            </label>
           </div>
         </div>
-      )}
-    </>
+      </div>
+
+      {/* Text editing section */}
+      <div className="flex flex-col space-y-6 max-w-2xl">
+        <div>
+          <textarea
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Improve Your Online Learning Experience Better Instantly"
+            className="w-full text-xl lg:text-4xl font-bold text-black dark:text-white bg-transparent border-none outline-none resize-none leading-tight"
+            rows={5}
+            style={{ lineHeight: "1.3" }}
+          />
+        </div>
+
+        <div>
+          <textarea
+            value={subTitle}
+            onChange={(e) => setSubTitle(e.target.value)}
+            placeholder="We have 40k+ Online courses & 500K+ Online registered student. Find your desired Courses from them."
+            className="w-full text-md text-black dark:text-gray-300 bg-transparent border-none outline-none resize-none leading-relaxed"
+            rows={3}
+          />
+        </div>
+
+        {/* Update Button */}
+        <div className="pt-4">
+          <button
+            onClick={
+              data?.layout?.banner?.title !== title ||
+              data?.layout?.banner?.subTitle !== subTitle ||
+              data?.layout?.banner?.image?.url !== image
+                ? handleSubmit
+                : () => null
+            }
+            className={`px-8 py-3 bg-gray-700 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-300 ${
+              data?.layout?.banner?.title !== title ||
+              data?.layout?.banner?.subTitle !== subTitle ||
+              data?.layout?.banner?.image?.url !== image
+                ? "!cursor-pointer !bg-gradient-to-r !from-blue-500 !to-purple-600"
+                : "!cursor-not-allowed"
+            }`}
+          >
+            Update
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

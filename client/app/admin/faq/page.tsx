@@ -1,28 +1,25 @@
 "use client";
-
-import Headings from "@/app/utils/Heading";
+import AdminSidebar from "../../components/Admin/Sidebar/AdminSidebar";
+import PageHead from "../../components/Common/PageHead";
 import EditFaq from "../../components/Admin/Customization/EditFaq";
-import AdminProtected from "@/app/hooks/adminProtected";
-import AdminSidebar from "@/app/components/Admin/sidebar/AdminSidebar";
-import DashboardHero from "../../components/Admin/DashboardHero"
-
-type Props = object;
-
+import DashboardHeader from "../../components/Admin/DashboardHeader";
+import AdminProtected from "../../hooks/adminProtected";
 const Page = () => {
   return (
     <div>
       <AdminProtected>
-        <Headings
-          title="ELearning Admin"
-          description="ELearning is a platform for students to learn and get help from teachers"
-          keywords="Programming, MERN, Redux,AI/ML"
+        <PageHead
+           title="Abous us - ELearning"
+        description="ELearning is an interactive E-Learning platform where all students can learn and grow together"
+        keywords="Online Learning, Learning, LMS, Programming, Tech"
         />
-        <div className="flex min-h-screen">
-          <div className="1500px:w-1/6 w-1/5">
+        <div className="flex">
+          <div className="1500px:w-[16px] w-1/5">
             <AdminSidebar />
           </div>
-          <div className="w-[85%]">
-            <DashboardHero isDashboard={true}/>
+          <div className="w-[85%] ">
+            <DashboardHeader />
+            {/* <CreateCourse /> */}
             <EditFaq />
           </div>
         </div>

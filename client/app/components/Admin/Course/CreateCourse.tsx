@@ -1,18 +1,14 @@
-"use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import CourseInformation from "./CourseInformation";
 import CourseOptions from "./CourseOptions";
 import CourseData from "./CourseData";
 import CourseContent from "./CourseContent";
 import CoursePreview from "./CoursePreview";
-import { useCreateCourseMutation } from "../../../../redux/features/courses/coursesApi";
+import { useCreateCourseMutation } from "@/redux/features/course/courseApi";
 import toast from "react-hot-toast";
 import { redirect } from "next/navigation";
-
-type Props = object;
-
 const CreateCourse = () => {
-  const [createCourse, { isLoading, error, isSuccess }] =
+  const [createCourse, { isLoading, isSuccess, error }] =
     useCreateCourseMutation();
 
   useEffect(() => {
@@ -20,27 +16,30 @@ const CreateCourse = () => {
       toast.success("Course created successfully!");
       redirect("/admin/courses");
     }
-
     if (error) {
       if ("data" in error) {
-        const errorMessage = error as any;
-        toast.error(errorMessage?.data?.message || "Something went wrong!");
+        // Fix the error data access
+        const errorData = error.data as { success?: boolean; message?: string };
+        toast.error(errorData?.message || "Course failed");
+      } else {
+        // Handle other types of errors
+        toast.error("An unexpected error occurred");
       }
     }
   }, [isLoading, isSuccess, error]);
-
   const [active, setActive] = useState(0);
   const [courseInfo, setCourseInfo] = useState({
     name: "",
     description: "",
     price: "",
+    category: "",
     estimatedPrice: "",
-    categories: "",
     tags: "",
     level: "",
     demoUrl: "",
     thumbnail: "",
   });
+
   const [benefits, setBenefits] = useState([{ title: "" }]);
   const [prerequisites, setPrerequisites] = useState([{ title: "" }]);
   const [courseContentData, setCourseContentData] = useState([
@@ -62,53 +61,48 @@ const CreateCourse = () => {
   const [courseData, setCourseData] = useState({});
 
   const handleSubmit = async () => {
+    // Format Benefits
     const formattedBenefits = benefits.map((benefit) => ({
       title: benefit.title,
     }));
-    const formattedPrerequisites = prerequisites.map((prereq) => ({
-      title: prereq.title,
+    // Format Prerequisites
+    const formattedPrerequisites = prerequisites.map((prequisite) => ({
+      title: prequisite.title,
     }));
-
-    const formattedCourseContentData = courseContentData.map(
-      (courseContent) => ({
-        videoUrl: courseContent.videoUrl,
-        title: courseContent.title,
-        description: courseContent.description,
-        videoLength: courseContent.videoLength,
-        videoSection: courseContent.videoSection,
-        links: courseContent.links.map((link) => ({
-          title: link.title,
-          url: link.url,
-        })),
-        suggestion: courseContent.suggestion,
-      })
-    );
-
+    // Format Course Content
+    const formattedCourseContetnt = courseContentData.map((courseContent) => ({
+      videoUrl: courseContent.videoUrl,
+      title: courseContent.title,
+      videoSection: courseContent.videoSection,
+      description: courseContent.description,
+      videoLength: courseContent.videoLength,
+      links: courseContent.links.map((link) => ({
+        title: link.title,
+        url: link.url,
+      })),
+      suggestion: courseContent.suggestion,
+    }));
+    // Forming Data
     const data = {
       name: courseInfo.name,
       description: courseInfo.description,
-      price: Number(courseInfo.price),
-      estimatedPrice: Number(courseInfo.estimatedPrice),
-      categories: courseInfo.categories,
+      price: courseInfo.price,
+      estimatedPrice: courseInfo.estimatedPrice,
       tags: courseInfo.tags,
+      category: courseInfo.category,
+      thumbnail: courseInfo.thumbnail,
       level: courseInfo.level,
       demoUrl: courseInfo.demoUrl,
-      thumbnail: courseInfo.thumbnail,
-      totalVideo: courseContentData.length,
+      totalVideos: courseContentData.length,
       benefits: formattedBenefits,
       prerequisites: formattedPrerequisites,
-      courseData: formattedCourseContentData.map((item) => ({
-        ...item,
-        videoLength: Number(item.videoLength),
-        suggestion: item.suggestion || "",
-      })),
+      courseData: formattedCourseContetnt,
     };
 
     setCourseData(data);
   };
-  console.log(courseData);
 
-  const handleCourseCreate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCourseCreate = async (e: any) => {
     const data = courseData;
     if (!isLoading) {
       await createCourse(data);
@@ -116,7 +110,7 @@ const CreateCourse = () => {
   };
 
   return (
-    <div className="flex w-full min-h-screen">
+    <div className="w-full min-h-screen pl-[260px] pt-6">
       <div className="w-[80%]">
         {active === 0 && (
           <CourseInformation
@@ -130,18 +124,18 @@ const CreateCourse = () => {
           <CourseData
             benefits={benefits}
             setBenefits={setBenefits}
-            prerequisites={prerequisites}
-            setPrerequisites={setPrerequisites}
             active={active}
             setActive={setActive}
+            prerequisites={prerequisites}
+            setPrerequisites={setPrerequisites}
           />
         )}
         {active === 2 && (
           <CourseContent
-            active={active}
-            setActive={setActive}
             courseContentData={courseContentData}
             setCourseContentData={setCourseContentData}
+            active={active}
+            setActive={setActive}
             handleSubmit={handleSubmit}
           />
         )}
@@ -149,8 +143,9 @@ const CreateCourse = () => {
           <CoursePreview
             active={active}
             setActive={setActive}
-            courseInfo={courseInfo}
+            courseData={courseData}
             handleCourseCreate={handleCourseCreate}
+            isEdit={false}
           />
         )}
       </div>

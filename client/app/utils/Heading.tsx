@@ -1,19 +1,18 @@
-import React, { FC } from "react";
+import Head from "next/head";
 
-interface HeadProps {
+interface HeadingProps {
   title: string;
   description: string;
   keywords: string;
 }
 
-const Heading: FC<HeadProps> = ({ title, description, keywords }) => {
+const Heading = ({ title, description, keywords }: HeadingProps) => {
   return (
-    <>
+    <Head>
       <title>{title}</title>
-      <meta name="viewport" content="width=device-width, inital-scale=1" />
       <meta name="description" content={description} />
       <meta name="keywords" content={keywords} />
-    </>
+    </Head>
   );
 };
 

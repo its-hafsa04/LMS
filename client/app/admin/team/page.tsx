@@ -1,35 +1,31 @@
 "use client";
 
-import DashboardHero from "@/app/components/Admin/DashboardHero";
-import AdminSidebar from "@/app/components/Admin/sidebar/AdminSidebar";
+import DashboardHeader from "@/app/components/Admin/DashboardHeader";
+import AdminSidebar from "@/app/components/Admin/Sidebar/AdminSidebar";
+import PageHead from "@/app/components/Common/PageHead";
 import AdminProtected from "@/app/hooks/adminProtected";
-import Heading from "@/app/utils/Heading";
-import React from "react";
-import AllUsers from "../../components/Admin/Users/AllUsers";
-
-type Props = object;
-
-const Page = () => {
+import AllUsers from "../../components/Admin/Course/AllUsers";
+const page = () => {
   return (
-    <AdminProtected>
-      <div>
-        <Heading
-          title="E-Learning - Admin"
-          description="ELearning is a platform for students where they can learn and get help from teachers"
-          keywords="Programming, MERN, Redux, Machine Learning, AWS"
+    <div>
+      <AdminProtected>
+        <PageHead
+         title="Abous us - ELearning"
+        description="ELearning is an interactive E-Learning platform where all students can learn and grow together"
+        keywords="Online Learning, Learning, LMS, Programming, Tech"
         />
-        <div className="flex h-[200vh]">
-          <div className="1500px:w-[16%] w-1/5">
+        <div className="flex h-screen">
+          <div className="1500px:w-[16px] w-1/5">
             <AdminSidebar />
           </div>
-          <div className="w-[85%]">
-            <DashboardHero isDashboard={true}/>
+          <div className="w-[85%] ">
+            <DashboardHeader />
             <AllUsers isTeam={true} />
           </div>
         </div>
-      </div>
-    </AdminProtected>
+      </AdminProtected>
+    </div>
   );
 };
 
-export default Page;
+export default page;

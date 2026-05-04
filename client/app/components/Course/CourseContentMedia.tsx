@@ -1,34 +1,33 @@
-import { styles } from "@/app/styles/style";
-import Ratings from "@/app/utils/Ratings";
-import {
-  useAddAnswerInQuestionMutation,
-  useAddNewQuestionMutation,
-  useAddReplyToReviewMutation,
-  useAddReviewInCourseMutation,
-  useGetCourseDetailsQuery,
-} from "@/redux/features/courses/coursesApi";
-import CoursePlayer from "@/utils/CoursePlayer";
+import CoursePlayer from "@/app/utils/CoursePlayer";
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from "react";
 import {
   AiFillStar,
   AiOutlineArrowLeft,
   AiOutlineArrowRight,
   AiOutlineStar,
 } from "react-icons/ai";
+import defaultAvatar from "../../../public/assets/avatar.jpg";
+import toast from "react-hot-toast";
+import {
+  useAddAnswertoQuestionMutation,
+  useAddNewQuestionMutation,
+  useAddReviewMutation,
+  useAddReviewReplyMutation,
+  useGetSingleUserCourseQuery,
+} from "@/redux/features/course/courseApi";
+import { format } from "timeago.js";
 import { BiMessage } from "react-icons/bi";
 import { VscVerifiedFilled } from "react-icons/vsc";
-import { format } from "timeago.js";
+import Ratings from "@/app/utils/Ratings";
 import socketIO from "socket.io-client";
 const ENDPOINT = process.env.NEXT_PUBLIC_SOCKET_SERVER_URI || "";
 const socketId = socketIO(ENDPOINT, { transports: ["websocket"] });
-
 type Props = {
   data: any;
   id: string;
-  activeVideo: number;
   setActiveVideo: (activeVideo: number) => void;
+  activeVideo: number;
   user: any;
   refetch: any;
 };
@@ -36,63 +35,57 @@ type Props = {
 const CourseContentMedia = ({
   data,
   id,
-  activeVideo,
   setActiveVideo,
+  activeVideo,
   user,
   refetch,
 }: Props) => {
-  const [activeBar, setactiveBar] = useState(0);
+  const [activeBar, setActiveBar] = useState(0);
   const [question, setQuestion] = useState("");
+  const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
-  const [rating, setRating] = useState(1);
-  const [answer, setAnswer] = useState("");
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [questionId, setQuestionId] = useState("");
-  const [reply, setReply] = useState("");
-  const [reviewId, setReviewId] = useState("");
   const [isReviewReply, setIsReviewReply] = useState(false);
-
-  const [
-    addNewQuestion,
-    { isSuccess, error, isLoading: questionCreationLoading },
-  ] = useAddNewQuestionMutation();
-  const { data: courseData, refetch: courseRefetch } = useGetCourseDetailsQuery(
+  const [reviewReply, setReviewReply] = useState("");
+  const [reviewId, setReviewId] = useState("");
+  const { data: course, refetch: reviewRefetch } = useGetSingleUserCourseQuery(
     id,
     { refetchOnMountOrArgChange: true }
   );
   const [
-    addAnswerInQuestion,
+    addNewQuestion,
     {
-      isSuccess: answerSuccess,
-      error: answerError,
-      isLoading: answerCreationLoading,
+      isSuccess: questionSuccess,
+      isLoading: questionLoading,
+      error: questionError,
     },
-  ] = useAddAnswerInQuestionMutation();
-  const course = courseData?.course;
-  const [
-    addReviewInCourse,
-    {
-      isSuccess: reviewSuccess,
-      error: reviewError,
-      isLoading: reviewCreationLoading,
-    },
-  ] = useAddReviewInCourseMutation();
+  ] = useAddNewQuestionMutation();
 
   const [
-    addReplyInReview,
-    {
-      isSuccess: replySuccess,
-      error: replyError,
-      isLoading: replyCreationLoading,
-    },
-  ] = useAddReplyToReviewMutation();
+    addAddAnswertoQuestion,
+    { isSuccess: answerSuccess, error: answerError, isLoading: answerLoading },
+  ] = useAddAnswertoQuestionMutation();
 
-  const isReviewExists = course?.reviews?.find(
+  const [
+    addReview,
+    { isSuccess: reviewSuccess, error: reviewError, isLoading: reviewLoading },
+  ] = useAddReviewMutation();
+
+  const [
+    addReviewReply,
+    {
+      isSuccess: reviewReplySuccess,
+      error: reviewReplyError,
+      isLoading: reviewReplyLoading,
+    },
+  ] = useAddReviewReplyMutation();
+  const alreadyReviewd = course?.course?.reviews?.find(
     (item: any) => item.user._id === user._id
   );
-
-  const handleQuestion = () => {
-    if (question.length === 0) {
-      toast.error("Question can't be empty");
+  const handleQuestionSubmit = () => {
+    if (question.length < 11) {
+      toast.error("Question should be atleast 10 characters long!");
     } else {
       addNewQuestion({
         question,
@@ -103,432 +96,518 @@ const CourseContentMedia = ({
   };
 
   useEffect(() => {
-    if (isSuccess) {
+    if (questionSuccess) {
+      toast.success("Question added successfully!");
+      socketId.emit("notification", {
+        title: "New Question Received",
+        message: `You have a new question on ${data[activeVideo].title}`,
+        userId: user?._id,
+      });
       setQuestion("");
       refetch();
-      socketId.emit("notification", {
-        title: `New Question Received`,
-        message: `You have a new question in ${data[activeVideo].title}`,
-        userId: user._id,
-      });
     }
+
+    if (questionError) {
+      if ("data" in questionError) {
+        const errorData = questionError.data as {
+          success?: boolean;
+          message?: string;
+        };
+        toast.error(errorData?.message || "Adding question failed");
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    }
+  }, [questionSuccess, questionError, refetch]);
+
+  useEffect(() => {
     if (answerSuccess) {
-      setAnswer("");
-      refetch();
-      if (user.role !== "admin") {
+      toast.success("Answer added successfully!");
+      if (user?.role !== "admin") {
         socketId.emit("notification", {
-          title: `New Reply Received`,
-          message: `You have a new question in ${data[activeVideo].title}`,
-          userId: user._id,
+          title: "New Reply Received",
+          message: `You have a new question reply on ${data[activeVideo].title}`,
+          userId: user?._id,
         });
       }
+      setAnswers({});
+      setQuestionId("");
+      refetch();
     }
-    if (error) {
-      if ("data" in error) {
-        const errorMessage = error as any;
-        toast.error(errorMessage.data.message);
-      }
-    }
+
     if (answerError) {
       if ("data" in answerError) {
-        const errorMessage = error as any;
-        toast.error(errorMessage.data.message);
+        const errorData = answerError.data as {
+          success?: boolean;
+          message?: string;
+        };
+        toast.error(errorData?.message || "Adding answer failed");
+      } else {
+        toast.error("An unexpected error occurred");
       }
     }
+  }, [answerSuccess, answerError, refetch]);
+
+  useEffect(() => {
     if (reviewSuccess) {
-      setReview("");
-      setRating(1);
-      courseRefetch();
+      toast.success("Review added successfully!");
       socketId.emit("notification", {
-        title: `New Question Received`,
-        message: `You have a new question in ${data[activeVideo].title}`,
-        userId: user._id,
+        title: "New Review Received",
+        message: `You have a new review on ${data[activeVideo].title}`,
+        userId: user?._id,
       });
+      setRating(0);
+      setReview("");
+      reviewRefetch();
     }
+
     if (reviewError) {
       if ("data" in reviewError) {
-        const errorMessage = error as any;
-        toast.error(errorMessage.data.message);
+        const errorData = reviewError.data as {
+          success?: boolean;
+          message?: string;
+        };
+        toast.error(errorData?.message || "Adding review failed");
+      } else {
+        toast.error("An unexpected error occurred");
       }
     }
-    if (replySuccess) {
-      setReply("");
-      courseRefetch();
-    }
-    if (replyError) {
-      if ("data" in replyError) {
-        const errorMessage = error as any;
-        toast.error(errorMessage.data.message);
-      }
-    }
-  }, [
-    isSuccess,
-    error,
-    answerSuccess,
-    answerError,
-    reviewSuccess,
-    reviewError,
-    replySuccess,
-    replyError,
-    refetch,
-    data,
-    activeVideo,
-    user._id,
-    user.role,
-    courseRefetch,
-  ]);
+  }, [reviewSuccess, reviewError, reviewRefetch]);
 
-  const handleAnswerSubmit = () => {
-    addAnswerInQuestion({
-      answer,
-      courseId: id,
-      contentId: data[activeVideo]._id,
-      questionId: questionId,
-    });
-  };
+  useEffect(() => {
+    if (reviewReplySuccess) {
+      toast.success("Review reply added successfully!");
+      setReviewReply("");
+      setIsReviewReply(false);
+      reviewRefetch();
+    }
+
+    if (reviewReplyError) {
+      if ("data" in reviewReplyError) {
+        const errorData = reviewReplyError.data as {
+          success?: boolean;
+          message?: string;
+        };
+        toast.error(errorData?.message || "Adding review failed");
+      } else {
+        toast.error("An unexpected error occurred");
+      }
+    }
+  }, [reviewReplySuccess, reviewReplyError, reviewRefetch]);
 
   const handleReviewSubmit = async () => {
     if (review.length === 0) {
-      toast.error("Review can't be empty");
+      toast.error("Please enter review message!");
+    } else if (rating === 0) {
+      toast.error("Please select a rating!");
     } else {
-      addReviewInCourse({ review, rating, courseId: id });
+      await addReview({ courseId: id, rating, review });
     }
   };
 
-  const handleReviewReplySubmit = async () => {
-    if (!replyCreationLoading) {
-      if (reply === "") {
-        toast.error("Reply can't be empty");
-      } else {
-        const result = await addReplyInReview({
-          comment: reply,
-          courseId: id,
-          reviewId,
-        });
+  const handleAnswerSubmit = async (currentQuestionId: string) => {
+    const currentAnswer = answers[currentQuestionId];
+    if (!currentAnswer || !currentAnswer.trim()) {
+      toast.error("Please enter an answer");
+      return;
+    }
 
-        if ("data" in result && result.data?.course) {
-          setReply("");
-          setIsReviewReply(false);
-          toast.success("Reply added successfully");
-        } else if ("error" in result) {
-          toast.error("Failed to add reply");
-          console.error(result.error);
-        }
+    await addAddAnswertoQuestion({
+      answer: currentAnswer,
+      courseId: id,
+      contentId: data[activeVideo]._id,
+      questionId: currentQuestionId,
+    });
+  };
+
+  const handleReviewReplySubmit = async () => {
+    if (!reviewReplyLoading) {
+      if (reviewReply === "") {
+        toast.error("Please fill in the reply!");
+      } else {
+        await addReviewReply({ comment: reviewReply, courseId: id, reviewId });
       }
     }
   };
 
+  // Update the answer for a specific question
+  const updateAnswer = (questionId: string, answerText: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: answerText,
+    }));
+  };
+
   return (
-    <div className="w-[95%] 800px:w-[86%] py-4 m-auto">
-      <CoursePlayer
-        title={data[activeVideo]?.title}
-        videoUrl={data[activeVideo]?.videoUrl}
-      />
-      <div className="w-full flex items-center justify-between my-3">
-        <div
-          className={`${
-            styles.button
-          } text-white  !w-[unset] !min-h-[40px] !py-[unset] ${
-            activeVideo === 0 && "!cursor-no-drop opacity-[.8]"
+    <div className="w-[95%] 800px:w-[86%] py-4 m-auto bg-white dark:bg-gray-900">
+      {/* Video Player */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden mb-6">
+        <CoursePlayer
+          title={data[activeVideo]?.title}
+          videoUrl={data[activeVideo]?.videoUrl}
+        />
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="w-full flex items-center justify-between my-6">
+        <button
+          className={`flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+            activeVideo === 0 && "!bg-gray-400 !cursor-not-allowed opacity-70"
           }`}
           onClick={() =>
             setActiveVideo(activeVideo === 0 ? 0 : activeVideo - 1)
           }
+          disabled={activeVideo === 0}
         >
-          <AiOutlineArrowLeft className="mr-2" />
+          <AiOutlineArrowLeft className="mr-2" size={18} />
           Prev Lesson
-        </div>
-        <div
-          className={`${
-            styles.button
-          } !w-[unset] text-white  !min-h-[40px] !py-[unset] ${
-            data.length - 1 === activeVideo && "!cursor-no-drop opacity-[.8]"
+        </button>
+        <button
+          className={`flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+            activeVideo === data.length - 1 &&
+            "!bg-gray-400 !cursor-not-allowed opacity-70"
           }`}
           onClick={() =>
             setActiveVideo(
-              data && data.length - 1 === activeVideo
+              data && activeVideo === data.length - 1
                 ? activeVideo
                 : activeVideo + 1
             )
           }
+          disabled={activeVideo === data.length - 1}
         >
           Next Lesson
-          <AiOutlineArrowRight className="ml-2" />
-        </div>
+          <AiOutlineArrowRight className="ml-2" size={18} />
+        </button>
       </div>
-      <h1 className="pt-2 text-[25px] font-[600] dark:text-white text-black ">
-        {data[activeVideo].title}
-      </h1>
-      <br />
-      <div className="w-full p-4 flex items-center justify-between bg-slate-500 bg-opacity-20 backdrop-blur shadow-[bg-slate-700] rounded shadow-inner">
-        {["Overview", "Resources", "Q&A", "Reviews"].map((text, index) => (
-          <h5
-            key={index}
-            className={`800px:text-[20px] cursor-pointer ${
-              activeBar === index
-                ? "text-red-500"
-                : "dark:text-white text-black"
-            }`}
-            onClick={() => setactiveBar(index)}
-          >
-            {text}
-          </h5>
-        ))}
-      </div>
-      <br />
-      {activeBar === 0 && (
-        <p className="text-[18px] whitespace-pre-line break-words mb-3 dark:text-white text-black">
-          {data[activeVideo]?.description}
-        </p>
-      )}
 
-      {activeBar === 1 && (
-        <div>
-          {data[activeVideo]?.links.map((item: any, index: number) => (
-            <div className="mb-5" key={index}>
-              <h2 className="800px:text-[20px] 800px:inline-block dark:text-white text-black">
-                {item.title && item.title + " :"}
-              </h2>
-              <a
-                className="inline-block text-[#4395c4] 800px:text-[20px] 800px:pl-2"
-                href={item.url}
+      {/* Video Title */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
+        <h1 className="text-[25px] font-Poppins font-[600] text-gray-900 dark:text-white">
+          {data[activeVideo].title}
+        </h1>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-6">
+        <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          {["Overview", "Resources", "Q&A", "Reviews"].map(
+            (text: string, index: number) => (
+              <button
+                key={index}
+                className={`px-4 py-3 font-Poppins font-[500] text-[16px] 800px:text-[18px] transition-all duration-300 border-b-2 ${
+                  activeBar === index
+                    ? "text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400"
+                    : "text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200"
+                }`}
+                onClick={() => setActiveBar(index)}
               >
-                {item.url}
-              </a>
-            </div>
-          ))}
+                {text}
+              </button>
+            )
+          )}
         </div>
-      )}
+      </div>
 
-      {activeBar === 2 && (
-        <>
-          <div className="flex w-full">
-            <Image
-              src={
-                user.avatar
-                  ? user.avatar.url
-                  : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-              }
-              width={50}
-              height={50}
-              alt=""
-              className="w-[50px] h-[50px] rounded-full object-cover"
-            />
-            <textarea
-              name=""
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              id=""
-              cols={40}
-              rows={5}
-              placeholder="Write your question..."
-              className="outline-none bg-transparent ml-3 border dark:text-white text-black border-[#0000001d] dark:border-[#ffffff57] 800px:w-full p-2 rounded w-[90%] 800px:text-[18px] font-Poppins"
-            ></textarea>
+      {/* Tab Content */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        {/* Overview */}
+        {activeBar === 0 && (
+          <div className="prose prose-lg dark:prose-invert max-w-none">
+            <p className="text-[16px] leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-line">
+              {data[activeVideo]?.description}
+            </p>
           </div>
-          <div className="w-full flex justify-end">
-            <div
-              className={`${
-                styles.button
-              } !w-[120px] !h-[40px] text-[18px] mt-5 ${
-                questionCreationLoading && "cursor-not-allowed"
-              }`}
-              onClick={questionCreationLoading ? () => {} : handleQuestion}
-            >
-              Submit
+        )}
+
+        {/* Resources */}
+        {activeBar === 1 && (
+          <div className="space-y-4">
+            {data[activeVideo]?.links.map((item: any, index: number) => (
+              <div
+                className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                key={index}
+              >
+                <h2 className="text-[18px] font-Poppins font-[600] text-gray-900 dark:text-white mb-2">
+                  {item.title && item.title}
+                </h2>
+                <a
+                  href={item.url}
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline text-[16px] break-all"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {item.url}
+                </a>
+              </div>
+            ))}
+            {data[activeVideo]?.links.length === 0 && (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                No resources available for this lesson.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Q & A */}
+        {activeBar === 2 && (
+          <div className="space-y-6">
+            {/* Question Form */}
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+              <h3 className="text-[20px] font-Poppins font-[600] text-gray-900 dark:text-white mb-4">
+                Ask a Question
+              </h3>
+              <div className="flex gap-4">
+                <Image
+                  src={user.avatar ? user.avatar?.url : defaultAvatar}
+                  width={50}
+                  height={50}
+                  alt="user-icon"
+                  className="w-[50px] h-[50px] rounded-full object-cover flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <textarea
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Write your question..."
+                    rows={4}
+                    className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                  <div className="flex justify-end mt-3">
+                    <button
+                      className={`px-6 py-2 bg-blue-600 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+                        questionLoading || question.length < 11
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:bg-blue-700"
+                      }`}
+                      onClick={
+                        questionLoading ? () => {} : handleQuestionSubmit
+                      }
+                      disabled={questionLoading || question.length < 11}
+                    >
+                      {questionLoading ? "Submitting..." : "Submit Question"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <CommentReply
+                data={data}
+                activeVideo={activeVideo}
+                answers={answers}
+                updateAnswer={updateAnswer}
+                handleAnswerSubmit={handleAnswerSubmit}
+                user={user}
+                setQuestionId={setQuestionId}
+                answerLoading={answerLoading}
+              />
             </div>
           </div>
-          <br />
-          <br />
-          <div className="w-full h-[1px] bg-[#ffffff3b]"></div>
-          <div>
-            <CommentReply
-              data={data}
-              activeVideo={activeVideo}
-              answer={answer}
-              setAnswer={setAnswer}
-              handleAnswerSubmit={handleAnswerSubmit}
-              user={user}
-              questionId={questionId}
-              setQuestionId={setQuestionId}
-              answerCreationLoading={answerCreationLoading}
-            />
-          </div>
-        </>
-      )}
+        )}
 
-      {activeBar === 3 && (
-        <div className="w-full">
-          <>
-            {!isReviewExists && (
-              <>
-                <div className="flex w-full">
+        {/* Reviews */}
+        {activeBar === 3 && (
+          <div className="space-y-6">
+            {!alreadyReviewd && (
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+                <h3 className="text-[20px] font-Poppins font-[600] text-gray-900 dark:text-white mb-4">
+                  Write a Review
+                </h3>
+                <div className="flex gap-4">
                   <Image
-                    src={
-                      user.avatar
-                        ? user.avatar.url
-                        : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                    }
+                    src={user.avatar ? user.avatar.url : defaultAvatar}
                     width={50}
                     height={50}
-                    alt=""
-                    className="w-[50px] h-[50px] rounded-full object-cover"
+                    alt="user-icon"
+                    className="w-[50px] h-[50px] rounded-full object-cover flex-shrink-0"
                   />
-                  <div className="w-full">
-                    <h5 className="pl-3 text-[20px] font-[500] dark:text-white text-black ">
-                      Give a Rating <span className="text-red-500">*</span>
-                    </h5>
-                    <div className="flex w-full ml-2 pb-3">
-                      {[1, 2, 3, 4, 5].map((i) =>
-                        rating >= i ? (
-                          <AiFillStar
-                            key={i}
-                            className="mr-1 cursor-pointer"
-                            color="rgb(246,186,0)"
-                            size={25}
-                            onClick={() => setRating(i)}
-                          />
-                        ) : (
-                          <AiOutlineStar
-                            key={i}
-                            className="mr-1 cursor-pointer"
-                            color="rgb(246,186,0)"
-                            size={25}
-                            onClick={() => setRating(i)}
-                          />
-                        )
-                      )}
+                  <div className="flex-1">
+                    <div className="mb-4">
+                      <label className="block text-[16px] font-Poppins font-[500] text-gray-900 dark:text-white mb-2">
+                        Rating <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((i) =>
+                          rating >= i ? (
+                            <AiFillStar
+                              key={i}
+                              className="cursor-pointer hover:scale-110 transition-transform"
+                              color="rgb(246,186,0)"
+                              size={28}
+                              onClick={() => setRating(i)}
+                            />
+                          ) : (
+                            <AiOutlineStar
+                              key={i}
+                              className="cursor-pointer hover:scale-110 transition-transform"
+                              color="rgb(246,186,0)"
+                              size={28}
+                              onClick={() => setRating(i)}
+                            />
+                          )
+                        )}
+                      </div>
                     </div>
                     <textarea
-                      name=""
                       value={review}
                       onChange={(e) => setReview(e.target.value)}
-                      id=""
-                      cols={40}
-                      rows={5}
-                      placeholder="Write your comment..."
-                      className="outline-none bg-transparent 800px:ml-3 dark:text-white text-black border border-[#00000027] dark:border-[#ffffff57] w-[95%] 800px:w-full p-2 rounded text-[18px] font-Poppins"
-                    ></textarea>
+                      placeholder="Share your thoughts about this course..."
+                      rows={4}
+                      className="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    />
+                    <div className="flex justify-end mt-3">
+                      <button
+                        className={`px-6 py-2 bg-blue-600 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+                          reviewLoading || !review.trim() || rating === 0
+                            ? "opacity-50 cursor-not-allowed"
+                            : "hover:bg-blue-700"
+                        }`}
+                        onClick={reviewLoading ? () => {} : handleReviewSubmit}
+                        disabled={
+                          reviewLoading || !review.trim() || rating === 0
+                        }
+                      >
+                        {reviewLoading ? "Submitting..." : "Submit Review"}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="w-full flex justify-end">
-                  <div
-                    className={`${
-                      styles.button
-                    } !w-[120px] !h-[40px] text-[18px] mt-5 800px:mr-0 mr-2 ${
-                      reviewCreationLoading && "cursor-no-drop"
-                    }`}
-                    onClick={
-                      reviewCreationLoading ? () => {} : handleReviewSubmit
-                    }
-                  >
-                    Submit
-                  </div>
-                </div>
-              </>
+              </div>
             )}
-            <br />
-            <div className="w-full h-[1px] bg-[#ffffff3b]"></div>
-            <div className="w-full">
-              {(course?.reviews && [...course.reviews].reverse())?.map(
-                (item: any, index: number) => {
-                  return (
-                    <div
-                      className="w-full my-5 dark:text-white text-black"
-                      key={index}
-                    >
-                      <div className="w-full flex">
-                        <div>
+
+            {/* Reviews List */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="space-y-6">
+                {course &&
+                  course?.course?.reviews &&
+                  [...course?.course?.reviews]
+                    .reverse()
+                    .map((item: any, index: number) => (
+                      <div
+                        className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6"
+                        key={index}
+                      >
+                        <div className="flex gap-4">
                           <Image
-                            src={
-                              item.user.avatar
-                                ? item.user.avatar.url
-                                : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                            }
+                            alt="user-img"
+                            src={item?.user?.avatar?.url || defaultAvatar}
                             width={50}
                             height={50}
-                            alt=""
-                            className="w-[50px] h-[50px] rounded-full object-cover"
+                            className="h-[50px] w-[50px] object-cover rounded-full flex-shrink-0"
                           />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-[18px] font-Poppins font-[600] text-gray-900 dark:text-white">
+                                {item?.user?.name}
+                              </h4>
+                              <small className="text-gray-500 dark:text-gray-400">
+                                {format(item?.createdAt)}
+                              </small>
+                            </div>
+                            <Ratings rating={item?.rating} />
+                            <p className="text-gray-700 dark:text-gray-300 mt-3 leading-relaxed">
+                              {item?.comment}
+                            </p>
+                          </div>
                         </div>
-                        <div className="ml-2">
-                          <h1 className="text-[18px]">{item?.user.name}</h1>
-                          <Ratings rating={item.rating} />
-                          <p>{item.comment}</p>
-                          <small className="text-[#ffffff83]">
-                            {format(i.createdAt)} •
-                          </small>
-                        </div>
-                      </div>
-                      {user.role === "admin" &&
-                        item.commentReplies.length === 0 && (
-                          <span
-                            className={`${styles.label} !ml-10 cursor-pointer`}
-                            onClick={() => {
-                              setIsReviewReply(true);
-                              setReviewId(item._id);
-                            }}
-                          >
-                            Add Reply
-                          </span>
+
+                        {user.role === "admin" &&
+                          item.commentReplies.length === 0 && (
+                            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                              <button
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-Poppins font-[500] text-[14px]"
+                                onClick={() => {
+                                  setIsReviewReply(!isReviewReply);
+                                  setReviewId(item?._id);
+                                }}
+                              >
+                                Add Reply
+                              </button>
+                            </div>
+                          )}
+
+                        {isReviewReply && reviewId === item?._id && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <div className="flex gap-3">
+                              <input
+                                type="text"
+                                value={reviewReply}
+                                onChange={(e: any) =>
+                                  setReviewReply(e.target.value)
+                                }
+                                placeholder="Enter your reply..."
+                                className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                              />
+                              <button
+                                type="button"
+                                className={`px-6 py-3 bg-blue-600 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+                                  reviewReplyLoading || !reviewReply.trim()
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "hover:bg-blue-700"
+                                }`}
+                                onClick={handleReviewReplySubmit}
+                                disabled={
+                                  reviewReplyLoading || !reviewReply.trim()
+                                }
+                              >
+                                {reviewReplyLoading ? "Submitting..." : "Reply"}
+                              </button>
+                            </div>
+                          </div>
                         )}
 
-                      {isReviewReply && reviewId === item._id && (
-                        <div className="w-full flex relative">
-                          <input
-                            type="text"
-                            placeholder="Enter your reply..."
-                            value={reply}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReply(e.target.value)}
-                            className="block 800px:ml-12 mt-2 outline-none bg-transparent border-b border-[#000] dark:border-[#fff] p-[5px] w-[95%]"
-                          />
-                          <button
-                            type="submit"
-                            className="absolute right-0 bottom-1"
-                            onClick={handleReviewReplySubmit}
-                          >
-                            Submit
-                          </button>
-                        </div>
-                      )}
-
-                      {item.commentReplies.map((i: any, index: number) => (
-                        <div
-                          className="w-full flex 800px:ml-16 my-5"
-                          key={index}
-                        >
-                          <div className="w-[50px] h-[50px]">
-                            <Image
-                              src={
-                                i.user.avatar
-                                  ? i.user.avatar.url
-                                  : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                              }
-                              width={50}
-                              height={50}
-                              alt=""
-                              className="w-[50px] h-[50px] rounded-full object-cover"
-                            />
-                          </div>
-                          <div className="pl-2">
-                            <div className="flex items-center">
-                              <h5 className="text-[20px]">{i.user.name}</h5>
-                              <VscVerifiedFilled className="text-[#0095F6] ml-2 text-[20px]" />
+                        {/* Admin Replies */}
+                        {item?.commentReplies.map(
+                          (i: any, replyIndex: number) => (
+                            <div
+                              className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600"
+                              key={replyIndex}
+                            >
+                              <div className="flex gap-4 800px:ml-8">
+                                <Image
+                                  alt="user-img"
+                                  src={i?.user?.avatar?.url || defaultAvatar}
+                                  width={40}
+                                  height={40}
+                                  className="h-[40px] w-[40px] object-cover rounded-full flex-shrink-0"
+                                />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h5 className="text-[16px] font-Poppins font-[600] text-gray-900 dark:text-white">
+                                      {i.user.name}
+                                    </h5>
+                                    {i.user.role === "admin" && (
+                                      <VscVerifiedFilled className="text-green-500 text-[16px]" />
+                                    )}
+                                  </div>
+                                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {i.comment}
+                                  </p>
+                                  <small className="text-gray-500 dark:text-gray-400">
+                                    {format(i.createdAt)}
+                                  </small>
+                                </div>
+                              </div>
                             </div>
-                            <p>{i.comment}</p>
-                            <small className="text-[#ffffff83]">
-                              {format(i.createdAt)} •
-                            </small>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-              )}
+                          )
+                        )}
+                      </div>
+                    ))}
+
+                {(!course?.course?.reviews ||
+                  course?.course?.reviews.length === 0) && (
+                  <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+                    No reviews yet. Be the first to review this course!
+                  </p>
+                )}
+              </div>
             </div>
-          </>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -536,155 +615,174 @@ const CourseContentMedia = ({
 const CommentReply = ({
   data,
   activeVideo,
-  answer,
-  setAnswer,
-  handleAnswerSubmit,
-  questionId,
+  user,
+  answers,
+  updateAnswer,
   setQuestionId,
-  answerCreationLoading,
+  handleAnswerSubmit,
+  answerLoading,
 }: any) => {
   return (
-    <>
-      <div className="w-full my-3">
-        {data[activeVideo].questions.map((item: any, index: any) => (
+    <div className="space-y-6">
+      {data[activeVideo].questions.length === 0 ? (
+        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
+          No questions yet. Be the first to ask a question!
+        </p>
+      ) : (
+        data[activeVideo].questions.map((question: any, index: number) => (
           <CommentItem
             key={index}
             data={data}
             activeVideo={activeVideo}
-            item={item}
+            question={question}
             index={index}
-            answer={answer}
-            setAnswer={setAnswer}
-            questionId={questionId}
+            answers={answers}
+            updateAnswer={updateAnswer}
             setQuestionId={setQuestionId}
+            answerLoading={answerLoading}
             handleAnswerSubmit={handleAnswerSubmit}
-            answerCreationLoading={answerCreationLoading}
+            user={user}
           />
-        ))}
-      </div>
-    </>
+        ))
+      )}
+    </div>
   );
 };
 
 const CommentItem = ({
-  questionId,
+  data,
   setQuestionId,
-  item,
-  answer,
-  setAnswer,
+  answers,
+  question,
+  updateAnswer,
   handleAnswerSubmit,
-  answerCreationLoading,
+  answerLoading,
+  user,
 }: any) => {
-  const [replyActive, setreplyActive] = useState(false);
+  const [replyActive, setReplyActive] = useState(false);
+  const currentAnswer = answers[question._id] || "";
+
+  const handleSubmit = () => {
+    handleAnswerSubmit(question._id);
+  };
+
   return (
-    <>
-      <div className="my-4">
-        <div className="flex mb-2">
-          <div>
-            <Image
-              src={
-                item.user.avatar
-                  ? item.user.avatar.url
-                  : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-              }
-              width={50}
-              height={50}
-              alt=""
-              className="w-[50px] h-[50px] rounded-full object-cover"
-            />
-          </div>
-          <div className="pl-3 dark:text-white text-black">
-            <h5 className="text-[20px]">{item?.user.name}</h5>
-            <p>{item?.question}</p>
-            <small className="text-[#000000b8] dark:text-[#ffffff83]">
-              {!item.createdAt ? "" : format(item?.createdAt)} •
+    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
+      {/* Question */}
+      <div className="flex gap-4 mb-4">
+        <Image
+          alt="user-img"
+          src={question?.user?.avatar?.url || defaultAvatar}
+          width={50}
+          height={50}
+          className="h-[50px] w-[50px] object-cover rounded-full flex-shrink-0"
+        />
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-2">
+            <h5 className="text-[18px] font-Poppins font-[600] text-gray-900 dark:text-white">
+              {question?.user?.name}
+            </h5>
+            <small className="text-gray-500 dark:text-gray-400">
+              {format(question.createdAt)}
             </small>
           </div>
+          <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+            {question?.question}
+          </p>
         </div>
-        <div className="w-full flex">
-          <span
-            className="800px:pl-16 text-[#000000b8] dark:text-[#ffffff83] cursor-pointer mr-2"
-            onClick={() => {
-              setreplyActive(!replyActive);
-              setQuestionId(item._id);
-            }}
-          >
-            {!replyActive
-              ? item.questionReplies.length !== 0
-                ? "All Replies"
-                : "Add Reply"
-              : "Hide Replies"}
-          </span>
-          <BiMessage
-            size={20}
-            className="dark:text-[#ffffff83] cursor-pointer text-[#000000b8]"
-          />
-          <span className="pl-1 mt-[-4px] cursor-pointer text-[#000000b8] dark:text-[#ffffff83]">
-            {item.questionReplies.length}
-          </span>
-        </div>
+      </div>
 
-        {replyActive && questionId === item._id && (
-          <>
-            {item.questionReplies.map((item: any) => (
-              <div
-                className="w-full flex 800px:ml-16 my-5 text-black dark:text-white"
-                key={item._id}
-              >
-                <div>
-                  <Image
-                    src={
-                      item.user.avatar
-                        ? item.user.avatar.url
-                        : "https://res.cloudinary.com/dshp9jnuy/image/upload/v1665822253/avatars/nrxsg8sd9iy10bbsoenn.png"
-                    }
-                    width={50}
-                    height={50}
-                    alt=""
-                    className="w-[50px] h-[50px] rounded-full object-cover"
-                  />
+      {/* Reply Controls */}
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          className="flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-Poppins font-[500] text-[14px]"
+          onClick={() => {
+            setReplyActive(!replyActive);
+            setQuestionId(question._id);
+          }}
+        >
+          <BiMessage size={16} />
+          {!replyActive
+            ? question.questionReplies?.length !== 0
+              ? `View Replies (${question.questionReplies?.length})`
+              : "Add Reply"
+            : "Hide Replies"}
+        </button>
+      </div>
+
+      {/* Replies */}
+      {replyActive && (
+        <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-4">
+          {/* Existing Replies */}
+          {question.questionReplies.map((reply: any, index: number) => (
+            <div className="flex gap-4 800px:ml-8" key={index}>
+              <Image
+                alt="user-img"
+                src={reply?.user?.avatar?.url || defaultAvatar}
+                width={40}
+                height={40}
+                className="h-[40px] w-[40px] object-cover rounded-full flex-shrink-0"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h6 className="text-[16px] font-Poppins font-[600] text-gray-900 dark:text-white">
+                    {reply.user.name}
+                  </h6>
+                  {reply.user.role === "admin" && (
+                    <VscVerifiedFilled className="text-green-500 text-[16px]" />
+                  )}
                 </div>
-                <div className="pl-3">
-                  <div className="flex items-center">
-                    <h5 className="text-[20px]">{item.user.name}</h5>
-                    {item.user.role === "admin" && (
-                      <VscVerifiedFilled className="text-[#0095F6] ml-2 text-[20px]" />
-                    )}
-                  </div>
-                  <p>{item.answer}</p>
-                  <small className="text-[#ffffff83]">
-                    {format(item.createdAt)} •
-                  </small>
-                </div>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {reply.answer}
+                </p>
+                <small className="text-gray-500 dark:text-gray-400">
+                  {format(reply.createdAt)}
+                </small>
               </div>
-            ))}
-            <>
-              <div className="w-full flex relative dark:text-white text-black">
+            </div>
+          ))}
+
+          {/* New Reply Form */}
+          <div className="flex gap-4 800px:ml-8">
+            <Image
+              src={user?.avatar?.url || defaultAvatar}
+              width={40}
+              height={40}
+              alt="user-avatar"
+              className="w-[40px] h-[40px] rounded-full object-cover flex-shrink-0"
+            />
+            <div className="flex-1">
+              <div className="flex gap-3">
                 <input
                   type="text"
                   placeholder="Enter your answer..."
-                  value={answer}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAnswer(e.target.value)}
-                  className={`block 800px:ml-12 mt-2 outline-none bg-transparent border-b border-[#00000027] dark:text-white text-black dark:border-[#fff] p-[5px] w-[95%] ${
-                    answer === "" ||
-                    (answerCreationLoading && "cursor-not-allowed")
-                  }`}
+                  value={currentAnswer}
+                  onChange={(e) => updateAnswer(question._id, e.target.value)}
+                  className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && currentAnswer.trim()) {
+                      handleSubmit();
+                    }
+                  }}
                 />
                 <button
-                  type="submit"
-                  className="absolute right-0 bottom-1"
-                  onClick={handleAnswerSubmit}
-                  disabled={answer === "" || answerCreationLoading}
+                  type="button"
+                  className={`px-6 py-3 bg-blue-600 text-white font-Poppins font-[500] rounded-lg transition-all duration-300 ${
+                    answerLoading || !currentAnswer.trim()
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-blue-700"
+                  }`}
+                  onClick={handleSubmit}
+                  disabled={!currentAnswer.trim() || answerLoading}
                 >
-                  Submit
+                  {answerLoading ? "Submitting..." : "Reply"}
                 </button>
               </div>
-              <br />
-            </>
-          </>
-        )}
-      </div>
-    </>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
