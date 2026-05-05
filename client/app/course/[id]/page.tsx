@@ -1,5 +1,5 @@
 "use client";
-import CourseDetailsPage from "../../components/Course/CourseDetailsPage";
+import CourseDetailsPage from "@/app/components/Course/CourseDetailsPage";
 import React from "react";
 
 const page = ({ params }: any) => {

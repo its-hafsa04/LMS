@@ -4,7 +4,7 @@ import DashboardHeader from "@/app/components/Admin/DashboardHeader";
 import AdminSidebar from "@/app/components/Admin/Sidebar/AdminSidebar";
 import PageHead from "@/app/components/Common/PageHead";
 import AdminProtected from "@/app/hooks/adminProtected";
-import AllUsers from "../../components/Admin/Course/AllUsers";
+import AllUsers from "@/app/components/Admin/Course/AllUsers";
 const page = () => {
   return (
     <div>
@@ -29,3 +29,4 @@ const page = () => {
 };
 
 export default page;
+

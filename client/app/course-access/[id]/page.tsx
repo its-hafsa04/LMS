@@ -4,7 +4,7 @@ import { useLoadUserQuery } from "@/redux/features/api/apiSlice";
 import { redirect } from "next/navigation";
 import React, { useEffect } from "react";
 import toast from "react-hot-toast";
-import CourseContent from "../../components/Course/CourseContent";
+import CourseContent from "@/app/components/Course/CourseContent";
 type Props = {
   params: any;
 };

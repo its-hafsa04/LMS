@@ -1,9 +1,9 @@
 "use client";
-import AdminSidebar from "../../../components/Admin/Sidebar/AdminSidebar";
-import PageHead from "../../../components/Common/PageHead";
-import EditCourse from "../../../components/Admin/Course/EditCourse";
-import DashboardHeader from "../../../components/Admin/DashboardHeader";
-import AdminProtected from "../../../hooks/adminProtected";
+import AdminSidebar from "@/app/components/Admin/Sidebar/AdminSidebar";
+import PageHead from "@/app/components/Common/PageHead";
+import EditCourse from "@/app/components/Admin/Course/EditCourse";
+import DashboardHeader from "@/app/components/Admin/DashboardHeader";
+import AdminProtected from "@/app/hooks/adminProtected";
 const Page = ({ params }: any) => {
   const id = params?.id;
 

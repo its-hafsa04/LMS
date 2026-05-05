@@ -1,7 +1,7 @@
 "use client";
-import AdminSidebar from "../../components/Admin/Sidebar/AdminSidebar";
-import PageHead from "../../components/Common/PageHead";
-import CreateCourse from "../../components/Admin/Course/CreateCourse";
+import AdminSidebar from "@/app/components/Admin/Sidebar/AdminSidebar";
+import PageHead from "@/app/components/Common/PageHead";
+import CreateCourse from "@/app/components/Admin/Course/CreateCourse";
 import DashboardHeader from "@/app/components/Admin/DashboardHeader";
 import AdminProtected from "@/app/hooks/adminProtected";
 const Page = () => {
@@ -28,3 +28,4 @@ const Page = () => {
 };
 
 export default Page;
+

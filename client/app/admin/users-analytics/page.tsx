@@ -1,9 +1,9 @@
 "use client";
-import AdminSidebar from "../../components/Admin/Sidebar/AdminSidebar";
-import PageHead from "../../components/Common/PageHead";
-import UserAnalytics from "../../components/Admin/Analytics/UserAnalytics";
-import DashboardHeader from "../../components/Admin/DashboardHeader";
-import AdminProtected from "../../hooks/adminProtected";
+import AdminSidebar from "@/app/components/Admin/Sidebar/AdminSidebar";
+import PageHead from "@/app/components/Common/PageHead";
+import UserAnalytics from "@/app/components/Admin/Analytics/UserAnalytics";
+import DashboardHeader from "@/app/components/Admin/DashboardHeader";
+import AdminProtected from "@/app/hooks/adminProtected";
 const Page = () => {
   return (
     <div>
@@ -29,3 +29,4 @@ const Page = () => {
 };
 
 export default Page;
+
