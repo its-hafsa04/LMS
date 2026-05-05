@@ -51,6 +51,14 @@ app.get("/test", (req: Request, res: Response) => {
   });
 });
 
+// Root Route
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: "Welcome to the LMS API",
+  });
+});
+
 // Unknown Route
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error(`Route ${req.originalUrl} not found!`) as any;

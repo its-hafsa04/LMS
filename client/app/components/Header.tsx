@@ -42,13 +42,25 @@ const Header = ({ activeItem, open, route, setRoute, setOpen }: Props) => {
         email: data?.user?.email,
         name: data?.user?.name,
         avatar: data?.user?.image,
+      }).then((res) => {
+        if (res.data) {
+          toast.success("Login successful");
+        }
+        if (res.error) {
+           console.error("Social Auth Error:", res.error);
+           toast.error("Social Authentication failed");
+        }
       });
     }
 
-    if (data === null && isSuccess) {
-      toast.success("Login successful");
+    if (error) {
+      console.error("Social Auth Error Hook:", error);
+      if ("data" in error) {
+        const errorData = error.data as any;
+        toast.error(errorData.message || "Social Authentication failed");
+      }
     }
-  }, [data, userData, isLoading, isSuccess, socialAuth]);
+  }, [data, userData, isLoading, isSuccess, socialAuth, error]);
 
   useEffect(() => {
     const handleScroll = () => {
