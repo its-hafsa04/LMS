@@ -21,7 +21,22 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: process.env.ORIGIN,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      // Strip trailing slash from origin for comparison
+      const cleanOrigin = origin.replace(/\/$/, "");
+      const allowedOrigins = (process.env.ORIGIN || "")
+        .split(",")
+        .map((o) => o.trim().replace(/\/$/, ""));
+
+      if (allowedOrigins.includes(cleanOrigin)) {
+        return callback(null, cleanOrigin);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
