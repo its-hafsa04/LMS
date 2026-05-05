@@ -9,7 +9,6 @@ const connectDB = async () => {
       .connect(dbUrl, {
         serverSelectionTimeoutMS: 40000,
         socketTimeoutMS: 55000,
-        bufferTimeoutMS: 60000,
         retryWrites: true,
         maxPoolSize: 10,
       })
